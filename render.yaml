@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: dealer-console-demo
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: APIFY_TOKEN
+        sync: false
+      - key: DEALER_NAME
+        value: Canadian Fine Motors
+      - key: DEALER_CITY
+        value: Scarborough, ON
+      - key: DEALER_POSTAL_CODE
+        value: M1R 2Y5
+      - key: SEARCH_RADIUS_KM
+        value: "100"
+      - key: SEARCH_MAX_RESULTS
+        value: "25"
+      - key: CACHE_HOURS
+        value: "6"

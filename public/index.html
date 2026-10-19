@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dealer Console</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="demo-bar">Prototype demo for <span id="dealer-name">the dealership</span> · market data from third-party listing sites · not a live system</div>
+<div class="shell">
+  <nav class="side" aria-label="Sections">
+    <div class="brand"><div class="brand-name" id="brand-name">Dealer Console</div><div class="brand-sub" id="brand-sub"></div></div>
+    <a href="#/inventory" class="navlink" data-nav="inventory">Inventory</a>
+    <a href="#/audit" class="navlink" data-nav="audit">Audit log</a>
+    <div class="side-note" id="source-note"></div>
+  </nav>
+  <main id="main" class="main"></main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>

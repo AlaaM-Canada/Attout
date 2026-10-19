@@ -1,0 +1,19 @@
+{
+  "name": "attout-dealer-console",
+  "version": "0.1.0",
+  "description": "Dealer console demo: pick a car from inventory, search the Canadian market, match the price.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "warm": "node src/warm.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}
