@@ -21,9 +21,9 @@ test('X3 sample analysis matches the hand-checked numbers', async () => {
 });
 
 test('classify excludes performance variants and keeps trim family', () => {
-  assert.strictEqual(pricing.classify(x3, { trim: 'M40i', title: '2019 BMW X3 M40i', headline: '' }), 'different');
-  assert.strictEqual(pricing.classify(x3, { trim: 'xDrive30i AWD', title: '', headline: '' }), 'close');
-  assert.strictEqual(pricing.classify(x3, { trim: '', title: '2019 BMW X3', headline: 'premium package' }), 'similar');
+  assert.strictEqual(pricing.classify(x3, { trim: 'M40i', title: '2019 BMW X3 M40i', headline: '' }).level, 'different');
+  assert.strictEqual(pricing.classify(x3, { trim: 'xDrive30i AWD', title: '', headline: '' }).level, 'exact');
+  assert.strictEqual(pricing.classify(x3, { trim: '', title: '2019 BMW X3', headline: 'premium package' }).level, 'similar');
 });
 
 test('adjust accounts for km, year and features', () => {
@@ -53,4 +53,25 @@ test('apify input is built from the car', () => {
   assert.strictEqual(inp.year_from, 2016);
   assert.strictEqual(inp.year_to, 2018);
   assert.deepStrictEqual(inp.sources, ['autotrader', 'kijiji', 'cargurus']);
+});
+
+test('body style and variant matching for a Porsche Cayenne Coupe', () => {
+  const car = { year: 2021, make: 'Porsche', model: 'Cayenne', trim: 'GTS', bodyStyle: 'Coupe', km: 40000, features: {} };
+  assert.strictEqual(pricing.classify(car, { trim: 'GTS Coupe', title: '2021 Porsche Cayenne GTS Coupe', headline: '' }).level, 'exact');
+  assert.strictEqual(pricing.classify(car, { trim: 'GTS', title: '2021 Porsche Cayenne GTS', headline: 'sport chrono' }).level, 'close');
+  assert.strictEqual(pricing.classify(car, { trim: '', title: '2021 Porsche Cayenne', headline: '' }).level, 'similar');
+  assert.strictEqual(pricing.classify(car, { trim: 'Coupe', title: '2021 Porsche Cayenne Coupe', headline: '' }).level, 'similar');
+  assert.strictEqual(pricing.classify(car, { trim: 'Turbo Coupe', title: '2021 Porsche Cayenne Turbo Coupe', headline: '' }).level, 'different');
+  assert.strictEqual(pricing.classify(car, { trim: 'E-Hybrid', title: '2021 Porsche Cayenne E-Hybrid', headline: '' }).level, 'different');
+});
+
+test('mode widens automatically when too few exact matches', async () => {
+  const car = { year: 2019, make: 'BMW', model: 'X3', trim: 'xDrive30i Sport package', km: 98000, listPrice: 24900, totalCost: 20600, features: {} };
+  const r = await sample.search(car);
+  const a = pricing.analyze(car, r.listings, 'exact');
+  assert.ok(a.counts.exact < 3);
+  assert.notStrictEqual(a.mode, 'exact');
+  assert.ok(a.modeNote.length > 0);
+  assert.ok(a.stats.used >= 3);
+  assert.strictEqual(a.buckets.length, 6);
 });

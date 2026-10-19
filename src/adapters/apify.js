@@ -43,6 +43,7 @@ function normalize(items) {
         make: it.make || '',
         model: it.model || '',
         trim: it.trim || '',
+        body: it.body_type || '',
         headline: it.headline || '',
         price: p,
         km: Number(it.mileage_km) || null,

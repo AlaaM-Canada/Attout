@@ -1,0 +1,1639 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dealer Console Demo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--page:#F5F5F4;--ink:#151515;--bar:#FBE6C8;--bar-ink:#6B3600;color-scheme:light}
+html,body{margin:0;background:var(--page);color:var(--ink)}
+a{color:#1F1F1F}a:hover{color:#1A1A1A}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #3D62A8;outline-offset:2px}
+#demo-bar{padding:8px 16px;background:var(--bar);color:var(--bar-ink);font:500 14px/1.4 'IBM Plex Sans','Segoe UI',system-ui,sans-serif;text-align:center}
+#app>div>div,#app>div>sc-none{min-height:calc(100vh - 36px)}
+</style>
+</head>
+<body>
+<div id="demo-bar">Prototype demo · sample data · not a live system</div>
+<div id="app"></div>
+<template id="tpl">
+
+<div>
+<sc-if value="{{isLogin}}" hint-placeholder-val="{{true}}">
+<div style="min-height: 980px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 24px; background: #121212; color: #151515; font-size: 15px; line-height: 1.45; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif">
+<div style="width: 100%; max-width: 420px; box-sizing: border-box; background: #FFFFFF; border-radius: 12px; padding: 32px; display: flex; flex-direction: column; gap: 16px">
+<div><div style="font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 20px">Canadian Fine Motors</div><div style="font-size: 13px; color: #555555">Owner console</div></div>
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 26px">Sign in</h1>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500">Email<input type="email" autocomplete="username" placeholder="name@example.com" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF"></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500">Password<input type="password" autocomplete="current-password" placeholder="Password" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF"></label>
+<button onClick="{{signIn}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Sign in</button>
+<div style="font-size: 13px; color: #555555">Demo sign-in. Any details are accepted, then a verification code is requested. Do not enter a real password.</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{isMfa}}" hint-placeholder-val="{{false}}">
+<div style="min-height: 980px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 24px; background: #121212; color: #151515; font-size: 15px; line-height: 1.45; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif">
+<div style="width: 100%; max-width: 420px; box-sizing: border-box; background: #FFFFFF; border-radius: 12px; padding: 32px; display: flex; flex-direction: column; gap: 16px">
+<div><div style="font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 20px">Canadian Fine Motors</div><div style="font-size: 13px; color: #555555">Two-step verification</div></div>
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 26px">Enter your code</h1>
+<div style="font-size: 14px">Open your authenticator app and enter the 6-digit code for this account.</div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500">Verification code<input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.3em"></label>
+<button onClick="{{verify}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Verify and continue</button>
+<button onClick="{{backToLogin}}" style="min-height: 44px; padding: 10px 16px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 15px; font-weight: 500">Back to sign in</button>
+<div style="font-size: 13px; color: #555555">Demo step. Any code is accepted. The real system would also offer SMS codes and recovery codes.</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{isIn}}" hint-placeholder-val="{{false}}">
+<div style="min-height: 980px; display: flex; flex-wrap: wrap; align-items: stretch; background: #F5F5F4; color: #151515; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<nav aria-label="Modules" style="flex: 1 1 220px; box-sizing: border-box; background: #121212; color: #F2F2F2; padding: 24px 16px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 0 8px">
+<div style="font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 0.01em">Canadian Fine Motors</div>
+<div style="font-size: 13px; color: #B8B8B8">Owner console · Scarborough, ON</div>
+</div>
+<sc-for list="{{navGroups}}" as="g" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="padding: 0 8px; font-size: 13px; font-weight: 600; color: #B8B8B8">{{g.title}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{g.items}}" as="n" hint-placeholder-count="3">
+<button onClick="{{n.go}}" style="flex: 1 1 170px; min-height: 44px; text-align: left; padding: 10px 14px; border: 0; border-radius: 8px; font-size: 15px; font-weight: 500; background: {{n.bg}}; color: {{n.fg}}">{{n.label}}</button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="padding: 0 8px; font-size: 13px; color: #B8B8B8">Signed in as Owner · two-step verification on</div>
+<button onClick="{{goNotif}}" style="min-height: 44px; text-align: left; padding: 10px 14px; border: 1px solid #4A4A4A; border-radius: 8px; font-size: 15px; font-weight: 500; background: {{notifBg}}; color: {{notifFg}}">{{notifBtnLabel}}</button>
+<button onClick="{{logout}}" style="min-height: 44px; text-align: left; padding: 10px 14px; border: 1px solid #4A4A4A; border-radius: 8px; font-size: 15px; font-weight: 500; background: #121212; color: #F2F2F2">Sign out</button>
+</div>
+<div style="margin: 0 8px; padding: 10px 12px; border: 1px solid #4A4A4A; border-radius: 8px; font-size: 13px; color: #D4D4D4">Prototype with sample data. Figures are illustrative.</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 28px clamp(16px, 3vw, 40px) 48px; display: flex; flex-direction: column; gap: 24px">
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+<div role="status" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 16px; background: #151515; color: #FFFFFF; border-radius: 8px">
+<span>{{toast}}</span>
+<button onClick="{{clearToast}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #FFFFFF; border-radius: 8px; background: #151515; color: #FFFFFF; font-size: 14px">Dismiss</button>
+</div>
+</sc-if>
+<sc-if value="{{formView.open}}" hint-placeholder-val="{{false}}">
+<div style="position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; box-sizing: border-box; overflow-y: auto; background: rgba(0, 0, 0, 0.55)">
+<div role="dialog" aria-modal="true" aria-label="{{formView.title}}" style="width: 100%; max-width: 660px; box-sizing: border-box; background: #FFFFFF; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 22px; font-weight: 700">{{formView.title}}</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px">
+<sc-for list="{{formView.fields}}" as="f" hint-placeholder-count="6">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500"><span>{{f.label}}</span><input type="text" value="{{f.value}}" onChange="{{f.change}}" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF"></label>
+</sc-for>
+</div>
+<sc-if value="{{formView.showKinds}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 14px; font-weight: 500">Status type</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{formView.kindBtns}}" as="k" hint-placeholder-count="4">
+<button onClick="{{k.pick}}" style="min-height: 44px; padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; border: 2px solid {{k.border}}; background: {{k.bg}}; color: {{k.fg}}">{{k.label}}</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{formView.hasError}}" hint-placeholder-val="{{false}}">
+<div role="alert" style="padding: 10px 12px; border-radius: 8px; background: #FBE6C8; color: #6B3600; font-weight: 500">{{formView.error}}</div>
+</sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{saveForm}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Save</button>
+<button onClick="{{cancelForm}}" style="min-height: 44px; padding: 10px 16px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 15px; font-weight: 500">Cancel</button>
+</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{confirmView.open}}" hint-placeholder-val="{{false}}">
+<div style="position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; box-sizing: border-box; overflow-y: auto; background: rgba(0, 0, 0, 0.55)">
+<div role="alertdialog" aria-modal="true" aria-label="Confirm delete" style="width: 100%; max-width: 460px; box-sizing: border-box; background: #FFFFFF; border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 22px; font-weight: 700">Delete this record?</h2>
+<div>{{confirmView.text}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{doDelete}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #8A2D00; color: #FFFFFF; font-size: 15px; font-weight: 600">Delete</button>
+<button onClick="{{cancelConfirm}}" style="min-height: 44px; padding: 10px 16px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 15px; font-weight: 500">Keep it</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+
+<sc-if value="{{isDash}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 24px">
+<header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Dashboard</h1>
+<div style="font-size: 14px; color: #555555">Sunday, October 4, 2026 · amounts in CAD</div>
+</header>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; color: #555555">Cars in stock</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 500">{{count}}</div>
+<div style="font-size: 13px; color: #555555">across lots, trailers and auction yards</div>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; color: #555555">Capital tied up</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 500">{{capital}}</div>
+<div style="font-size: 13px; color: #555555">purchase, fees, transport, reconditioning</div>
+</div>
+<div style="background: #B4470E; color: #FFFFFF; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px">Over 90 days</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 500">{{overCount}} cars</div>
+<div style="font-size: 13px">{{overCapital}} locked in aged stock</div>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; color: #555555">Due this week</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 30px; font-weight: 500">4 items</div>
+<div style="font-size: 13px; color: #555555">cheques, lender and bank follow-ups</div>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Monthly performance</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{rangeBtns}}" as="t" hint-placeholder-count="2">
+<button onClick="{{t.pick}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #1F1F1F; border-radius: 999px; font-size: 14px; font-weight: 500; background: {{t.bg}}; color: {{t.fg}}">{{t.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{metricBtns}}" as="t" hint-placeholder-count="4">
+<button onClick="{{t.pick}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #1F1F1F; border-radius: 8px; font-size: 14px; font-weight: 500; background: {{t.bg}}; color: {{t.fg}}">{{t.label}}</button>
+</sc-for>
+</div>
+<div style="overflow-x: auto">
+<div style="display: flex; align-items: flex-end; gap: 10px; height: 230px; min-width: 320px">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="6">
+<button onClick="{{b.pick}}" style="flex: 1 1 0; min-width: 44px; height: 230px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: #151515">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px">{{b.valF}}</span>
+<span style="display: block; width: 100%; max-width: 72px; height: {{b.h}}; border-radius: 6px 6px 0 0; background: {{b.color}}"></span>
+<span style="font-size: 13px; font-weight: {{b.weight}}">{{b.month}}</span>
+</button>
+</sc-for>
+</div>
+</div>
+<div style="padding: 12px 14px; background: #F5F5F4; border-radius: 8px; font-size: 14px">{{monthDetail}}</div>
+<div style="font-size: 13px; color: #555555">Select a month for its full figures.</div>
+</section>
+
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Capital by location</h2>
+<sc-for list="{{locs}}" as="l" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; justify-content: space-between; gap: 12px; font-size: 14px"><span>{{l.label}} · {{l.count}}</span><span style="font-family: 'IBM Plex Mono', monospace">{{l.valF}}</span></div>
+<div style="height: 12px; background: #EAEAE8; border-radius: 6px"><div style="height: 12px; border-radius: 6px; width: {{l.pct}}; background: #3D62A8"></div></div>
+</div>
+</sc-for>
+<div style="font-size: 13px; color: #555555">Total cost of the cars currently at each place.</div>
+</section>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Inventory aging</h2>
+<sc-for list="{{buckets}}" as="b" hint-placeholder-count="4">
+<button onClick="{{b.pick}}" style="min-height: 44px; display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; text-align: left; font-size: 14px; color: #151515; border-radius: 8px; border: 1px solid {{b.border}}; background: {{b.bg}}">
+<span style="display: flex; justify-content: space-between"><span>{{b.label}}</span><span style="font-family: 'IBM Plex Mono', monospace">{{b.count}}</span></span>
+<span style="display: block; height: 12px; background: #EAEAE8; border-radius: 6px"><span style="display: block; height: 12px; border-radius: 6px; width: {{b.pct}}; background: {{b.color}}"></span></span>
+</button>
+</sc-for>
+<div style="font-size: 13px; color: #555555">{{bucketTitle}}</div>
+<sc-for list="{{bucketCars}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #EAEAE8">
+<div style="flex: 1 1 160px; min-width: 0"><div style="font-weight: 600">{{r.name}}</div><div style="font-size: 13px; color: #555555">{{r.days}} days · {{r.loc}}</div></div>
+<button onClick="{{r.open}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Car card</button>
+</div>
+</sc-for>
+<button onClick="{{goInv}}" style="align-self: flex-start; min-height: 44px; padding: 10px 16px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 15px; font-weight: 500">View inventory</button>
+</section>
+
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Needs attention</h2>
+<sc-for list="{{alerts}}" as="a" hint-placeholder-count="3">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px; background: #FBF1E2; border-radius: 8px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 180px">
+<div style="font-weight: 600">{{a.name}}</div>
+<div style="font-size: 14px; color: #5C3A10">{{a.note}}</div>
+</div>
+<button onClick="{{a.open}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #121212; color: #FFFFFF; font-size: 14px; font-weight: 500">Open car card</button>
+</div>
+</sc-for>
+</section>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Payments and follow-ups this week</h2>
+<div style="display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EAEAE8"><div><div style="font-weight: 500">Cheque to auction, 2022 Mercedes-Benz GLC 300</div><div style="font-size: 13px; color: #555555">Due Tue, Oct 6</div></div><div style="font-family: 'IBM Plex Mono', monospace; white-space: nowrap">$34,700</div></div>
+<div style="display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EAEAE8"><div><div style="font-weight: 500">Deposit customer post-dated cheque</div><div style="font-size: 13px; color: #555555">Dated Wed, Oct 7</div></div><div style="font-family: 'IBM Plex Mono', monospace; white-space: nowrap">$8,500</div></div>
+<div style="display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EAEAE8"><div><div style="font-weight: 500">Floor plan lender, monthly interest</div><div style="font-size: 13px; color: #555555">Due Fri, Oct 9</div></div><div style="font-family: 'IBM Plex Mono', monospace; white-space: nowrap">$1,240</div></div>
+<div style="display: flex; justify-content: space-between; gap: 12px; padding: 10px 0"><div><div style="font-weight: 500">Bank financing approval, Highlander buyer</div><div style="font-size: 13px; color: #555555">Pending 5 days, follow up with bank</div></div><div style="font-family: 'IBM Plex Mono', monospace; white-space: nowrap">$12,000</div></div>
+</section>
+
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">September vs August</h2>
+<div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px 12px; font-size: 15px">
+<div style="font-size: 13px; color: #555555"></div><div style="font-size: 13px; color: #555555; text-align: right">September</div><div style="font-size: 13px; color: #555555; text-align: right">August</div>
+<div>Cars purchased</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">7</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">5</div>
+<div>Cars sold</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">6</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">8</div>
+<div>Sales revenue</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">$131,200</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">$164,900</div>
+<div>Gross profit</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">$19,850</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">$24,300</div>
+</div>
+<button onClick="{{goChat}}" style="align-self: flex-start; min-height: 44px; margin-top: 6px; padding: 10px 16px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 15px; font-weight: 500">Ask the assistant</button>
+</section>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isInv}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Inventory</h1>
+<div style="font-size: 14px; color: #555555">{{count}} cars · sorted by days in stock</div>
+</header>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+<label style="flex: 1 1 240px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500"><span>Search cars</span><input type="search" value="{{searchVal}}" onChange="{{onSearch}}" placeholder="Vehicle, stock number or location" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF"></label>
+<button onClick="{{addCar}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Add car</button>
+</div>
+<div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px">
+<div style="min-width: 1100px; display: flex; flex-direction: column">
+<div style="display: grid; grid-template-columns: 2.2fr 1.7fr 0.9fr 1fr 1fr 270px; gap: 12px; padding: 12px 18px; font-size: 13px; color: #555555; border-bottom: 1px solid #DCDCDA">
+<div>Vehicle</div><div>Location</div><div>Days</div><div style="text-align: right">Total cost</div><div style="text-align: right">List price</div><div></div>
+</div>
+<sc-for list="{{invRows}}" as="r" hint-placeholder-count="10">
+<div style="display: grid; grid-template-columns: 2.2fr 1.7fr 0.9fr 1fr 1fr 270px; gap: 12px; align-items: center; padding: 10px 18px; border-bottom: 1px solid #EAEAE8">
+<div><div style="font-weight: 600">{{r.name}}</div><div style="font-size: 13px; color: #555555">Stock {{r.stock}} · {{r.source}}</div></div>
+<div>{{r.loc}}</div>
+<div><span style="display: inline-block; padding: 3px 10px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; font-size: 14px; background: {{r.ageBg}}; color: {{r.ageFg}}">{{r.days}}</span></div>
+<div style="font-family: 'IBM Plex Mono', monospace; text-align: right">{{r.costF}}</div>
+<div style="font-family: 'IBM Plex Mono', monospace; text-align: right">{{r.listF}}</div>
+<div style="display: flex; gap: 6px"><button onClick="{{r.open}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Card</button><button onClick="{{r.edit}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Edit</button><button onClick="{{r.del}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #8A2D00; border-radius: 8px; background: #FFFFFF; color: #8A2D00; font-size: 14px; font-weight: 500">Delete</button></div>
+</div>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{invEmpty}}" hint-placeholder-val="{{false}}">
+<div style="padding: 24px; border: 1px dashed #BBBBB8; border-radius: 10px; color: #555555">No cars match. Clear the search or add a car.</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{isCar}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<button onClick="{{goInv}}" style="align-self: flex-start; min-height: 44px; padding: 8px 14px; border: 1px solid #C8C8C6; border-radius: 8px; background: #FFFFFF; color: #151515; font-size: 14px">Back to inventory</button>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{carMarket}}" style="min-height: 44px; padding: 8px 12px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 14px; font-weight: 600">Check the market</button>
+<button onClick="{{carEdit}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Edit car</button>
+<button onClick="{{carDel}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #8A2D00; border-radius: 8px; background: #FFFFFF; color: #8A2D00; font-size: 14px; font-weight: 500">Delete car</button>
+</div>
+<header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+<div>
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">{{car.name}}</h1>
+<div style="font-size: 14px; color: #555555">Stock {{car.stock}} · {{car.kmF}} · bought at {{car.source}} · now at {{car.loc}}</div>
+</div>
+<span style="padding: 8px 16px; border-radius: 999px; font-family: 'IBM Plex Mono', monospace; font-size: 16px; background: {{car.ageBg}}; color: {{car.ageFg}}">{{car.days}} days in stock</span>
+</header>
+
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Lifecycle</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+<div style="padding: 12px; border-radius: 8px; border: 1px solid {{s.border}}; background: {{s.bg}}; color: {{s.fg}}; display: flex; flex-direction: column; gap: 2px">
+<div style="font-weight: 600">{{s.label}}</div>
+<div style="font-size: 13px">{{s.state}}</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px">
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0 0 6px; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Cost breakdown</h2>
+<div style="display: flex; justify-content: space-between"><span>Auction purchase</span><span style="font-family: 'IBM Plex Mono', monospace">{{car.buyF}}</span></div>
+<div style="display: flex; justify-content: space-between"><span>Auction fees</span><span style="font-family: 'IBM Plex Mono', monospace">{{car.feeF}}</span></div>
+<div style="display: flex; justify-content: space-between"><span>Transport</span><span style="font-family: 'IBM Plex Mono', monospace">{{car.transF}}</span></div>
+<div style="display: flex; justify-content: space-between"><span>Safety and reconditioning</span><span style="font-family: 'IBM Plex Mono', monospace">{{car.reconF}}</span></div>
+<div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px solid #DCDCDA; font-weight: 600"><span>Total cost</span><span style="font-family: 'IBM Plex Mono', monospace">{{car.costF}}</span></div>
+<div style="display: flex; justify-content: space-between"><span>List price</span><span style="font-family: 'IBM Plex Mono', monospace">{{car.listF}}</span></div>
+</section>
+
+<section style="background: #121212; color: #F2F2F2; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">AI pricing agent</h2>
+<span style="padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: {{car.recBg}}; color: {{car.recFg}}">{{car.recKind}}</span>
+</div>
+<div style="font-size: 17px; font-weight: 500; color: #FFFFFF">{{car.rec}}</div>
+<div style="display: flex; justify-content: space-between; font-size: 14px"><span>Market median, similar cars</span><span style="font-family: 'IBM Plex Mono', monospace">{{car.medianF}}</span></div>
+<div style="font-size: 13px; color: #B8B8B8">Sample comparables</div>
+<sc-for list="{{comps}}" as="c" hint-placeholder-count="3">
+<div style="display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px; background: #262626; border-radius: 6px; font-size: 14px"><span>{{c.label}} · {{c.km}}</span><span style="font-family: 'IBM Plex Mono', monospace">{{c.price}}</span></div>
+</sc-for>
+<div style="font-size: 13px; color: #B8B8B8">Mocked for the demo. Live market sources to be confirmed in discovery.</div>
+</section>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isChat}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px; max-width: 820px">
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Assistant</h1>
+<div style="font-size: 14px; color: #555555">Instant answers about stock, finance and follow-ups. Scripted for the demo.</div>
+</header>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{questions}}" as="q" hint-placeholder-count="3">
+<button onClick="{{q.ask}}" style="min-height: 44px; padding: 10px 16px; border: 1px solid #1F1F1F; border-radius: 999px; background: #FFFFFF; color: #1A1A1A; font-size: 15px; font-weight: 500">{{q.text}}</button>
+</sc-for>
+</div>
+<sc-if value="{{chatEmpty}}" hint-placeholder-val="{{true}}">
+<div style="padding: 24px; border: 1px dashed #BBBBB8; border-radius: 10px; color: #555555">Pick a question above to see how the owner would get a report in seconds.</div>
+</sc-if>
+<sc-for list="{{chat}}" as="m" hint-placeholder-count="0">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="align-self: flex-end; max-width: 85%; padding: 10px 14px; border-radius: 12px; background: #1F1F1F; color: #FFFFFF">{{m.q}}</div>
+<div style="align-self: flex-start; max-width: 92%; padding: 12px 16px; border-radius: 12px; background: #FFFFFF; border: 1px solid #DCDCDA; white-space: pre-line">{{m.a}}</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{isLoc}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Location management</h1>
+<div style="font-size: 14px; color: #555555">Every place a car can be, with a live count of the cars at each one.</div>
+</div>
+<button onClick="{{addLoc}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Add location</button>
+</header>
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Map snapshot</h2>
+<div style="font-size: 13px; color: #555555">Schematic of the Toronto area, not to scale. Select a pin to list its cars.</div>
+</div>
+<div style="overflow-x: auto">
+<div style="position: relative; min-width: 620px; height: 400px; border-radius: 8px; overflow: hidden; background: #E6E8E4">
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 18%; background: #C7D8E8"></div>
+<div style="position: absolute; left: 0; right: 0; top: 50%; height: 5px; background: #FFFFFF"></div>
+<div style="position: absolute; left: 31%; top: 0; height: 50%; width: 5px; background: #FFFFFF"></div>
+<div style="position: absolute; left: 68%; top: 0; height: 82%; width: 5px; background: #FFFFFF"></div>
+<div style="position: absolute; font-size: 13px; color: #555555; left: 44%; bottom: 5%">Lake Ontario</div>
+<div style="position: absolute; font-size: 13px; color: #555555; left: 2%; top: 52%">Hwy 401</div>
+<div style="position: absolute; font-size: 13px; color: #555555; left: 5%; top: 74%">Milton</div>
+<div style="position: absolute; font-size: 13px; color: #555555; left: 20%; top: 6%">Brampton</div>
+<div style="position: absolute; font-size: 13px; color: #555555; left: 52%; top: 68%">Toronto</div>
+<div style="position: absolute; font-size: 13px; color: #555555; left: 78%; top: 62%">Scarborough</div>
+<sc-for list="{{locViews}}" as="l" hint-placeholder-count="5">
+<div style="position: absolute; left: {{l.left}}; top: {{l.top}}; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px">
+<button onClick="{{l.pick}}" aria-label="{{l.aria}}" style="width: {{l.size}}; height: {{l.size}}; padding: 0; border: 3px solid #FFFFFF; border-radius: 50%; font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 500; color: #FFFFFF; background: {{l.pinBg}}">{{l.count}}</button>
+<span style="padding: 2px 8px; border-radius: 6px; background: #FFFFFF; font-size: 13px; font-weight: 500; white-space: nowrap">{{l.name}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="font-weight: 600">{{selLocTitle}}</div>
+<sc-if value="{{selEmpty}}" hint-placeholder-val="{{false}}">
+<div style="color: #555555">No cars at this location.</div>
+</sc-if>
+<sc-for list="{{selCars}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid #EAEAE8">
+<div style="flex: 1 1 200px; min-width: 0"><div style="font-weight: 600">{{r.name}}</div><div style="font-size: 13px; color: #555555">Stock {{r.stock}} · {{r.days}} days · {{r.loc}}</div></div>
+<button onClick="{{r.open}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Car card</button>
+</div>
+</sc-for>
+<sc-if value="{{hasUnassigned}}" hint-placeholder-val="{{false}}">
+<div style="padding: 10px 12px; border-radius: 8px; background: #FBE6C8; color: #6B3600">{{unassignedNote}}</div>
+</sc-if>
+</section>
+<div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px">
+<div style="min-width: 1000px; display: flex; flex-direction: column">
+<div style="display: grid; grid-template-columns: 1.6fr 1.8fr 0.9fr 0.8fr 1fr 250px; gap: 12px; padding: 12px 18px; font-size: 13px; font-weight: 600; color: #555555; background: #F5F5F4; border-bottom: 1px solid #DCDCDA">
+<div>Location</div><div>Address</div><div>Capacity</div><div>Cars</div><div>Capital</div><div>Actions</div>
+</div>
+<sc-for list="{{locViews}}" as="l" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: 1.6fr 1.8fr 0.9fr 0.8fr 1fr 250px; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid #EAEAE8; background: {{l.rowBg}}">
+<div><div style="font-weight: 600">{{l.name}}</div><div style="font-size: 13px; color: #555555">{{l.type}}</div></div>
+<div>{{l.address}}</div>
+<div>{{l.capacityF}}</div>
+<div style="font-family: 'IBM Plex Mono', monospace">{{l.count}}</div>
+<div style="font-family: 'IBM Plex Mono', monospace">{{l.capF}}</div>
+<div style="display: flex; gap: 6px"><button onClick="{{l.pick}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Show</button><button onClick="{{l.edit}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Edit</button><button onClick="{{l.del}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #8A2D00; border-radius: 8px; background: #FFFFFF; color: #8A2D00; font-size: 14px; font-weight: 500">Delete</button></div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="font-size: 13px; color: #555555">Sample locations. Addresses in brackets are placeholders. New locations appear along the top of the map.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isWf}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Workflows</h1>
+<div style="font-size: 14px; color: #555555">Define each business process as ordered steps, each owned by a role.</div>
+</div>
+<button onClick="{{addWf}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Add workflow</button>
+</header>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px">
+<sc-for list="{{wfViews}}" as="w" hint-placeholder-count="3">
+<div style="padding: 16px; border-radius: 10px; display: flex; flex-direction: column; gap: 8px; border: 2px solid {{w.border}}; background: {{w.bg}}">
+<div style="font-weight: 600; font-size: 17px">{{w.name}}</div>
+<div style="font-size: 14px; color: #555555">Starts when: {{w.trigger}}</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">{{w.stepLabel}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px"><button onClick="{{w.pick}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Open</button><button onClick="{{w.edit}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Edit</button><button onClick="{{w.del}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #8A2D00; border-radius: 8px; background: #FFFFFF; color: #8A2D00; font-size: 14px; font-weight: 500">Delete</button></div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{wfNone}}" hint-placeholder-val="{{false}}">
+<div style="padding: 24px; border: 1px dashed #BBBBB8; border-radius: 10px; color: #555555">No workflows yet. Add one to define a process.</div>
+</sc-if>
+<sc-if value="{{wfHas}}" hint-placeholder-val="{{true}}">
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px">
+<div style="flex: 1 1 260px; min-width: 0"><h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 20px; font-weight: 600">{{wfCur.name}}</h2><div style="font-size: 14px; color: #555555">Starts when: {{wfCur.trigger}}</div></div>
+<button onClick="{{addStep}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Add step</button>
+</div>
+<sc-if value="{{stepsNone}}" hint-placeholder-val="{{false}}">
+<div style="color: #555555">This workflow has no steps yet.</div>
+</sc-if>
+<sc-for list="{{stepViews}}" as="t" hint-placeholder-count="4">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px; border: 1px solid #DCDCDA; border-left: 5px solid #3D62A8; border-radius: 8px">
+<div style="width: 36px; height: 36px; border-radius: 50%; background: #151515; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-weight: 500">{{t.num}}</div>
+<div style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<div style="font-weight: 600">{{t.title}}</div>
+<div style="font-size: 14px; color: #555555">{{t.detail}}</div>
+<div><span style="display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; background: #E3E8F4; color: #1F3F74">{{t.who}}</span></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px"><button onClick="{{t.up}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Move up</button><button onClick="{{t.down}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Move down</button><button onClick="{{t.edit}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Edit</button><button onClick="{{t.del}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #8A2D00; border-radius: 8px; background: #FFFFFF; color: #8A2D00; font-size: 14px; font-weight: 500">Delete</button></div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+<div style="font-size: 13px; color: #555555">Sample workflows. In this prototype they describe the process and do not yet route real approvals.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isAudit}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Audit log</h1>
+<div style="font-size: 14px; color: #555555">Who did what and when. Entries are added automatically and cannot be edited or deleted.</div>
+</header>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+<label style="flex: 1 1 240px; max-width: 420px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500"><span>Search the log</span><input type="search" value="{{searchVal}}" onChange="{{onSearch}}" placeholder="User, action, module or record" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF"></label>
+<div style="font-size: 14px; color: #555555; padding-bottom: 12px">{{auditCount}}</div>
+</div>
+<div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px">
+<div style="min-width: 900px; display: flex; flex-direction: column">
+<div style="display: grid; grid-template-columns: 1.1fr 1.2fr 1.6fr 1.2fr 1.8fr; gap: 12px; padding: 12px 18px; font-size: 13px; font-weight: 600; color: #555555; background: #F5F5F4; border-bottom: 1px solid #DCDCDA">
+<div>Time</div><div>User</div><div>Action</div><div>Module</div><div>Record</div>
+</div>
+<sc-for list="{{auditRows}}" as="a" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: 1.1fr 1.2fr 1.6fr 1.2fr 1.8fr; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid #EAEAE8">
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">{{a.time}}</div>
+<div>{{a.user}}</div>
+<div style="font-weight: 600">{{a.action}}</div>
+<div>{{a.module}}</div>
+<div>{{a.target}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{auditEmpty}}" hint-placeholder-val="{{false}}">
+<div style="padding: 24px; border: 1px dashed #BBBBB8; border-radius: 10px; color: #555555">No log entries match the search.</div>
+</sc-if>
+<div style="font-size: 13px; color: #555555">Older entries are samples. Anything you add, edit or delete in this prototype, and each sign-in, is logged at the top.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isMail}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Internal mail</h1>
+<div style="font-size: 14px; color: #555555">Messages between staff, kept inside the system and tied to the audit log.</div>
+</div>
+<button onClick="{{composeMail}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">New message</button>
+</header>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{mailTabs}}" as="t" hint-placeholder-count="2">
+<button onClick="{{t.pick}}" style="min-height: 44px; padding: 8px 16px; border: 1px solid #1F1F1F; border-radius: 999px; font-size: 14px; font-weight: 500; background: {{t.bg}}; color: {{t.fg}}">{{t.label}}</button>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start">
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 8px; gap: 4px">
+<sc-if value="{{mailNone}}" hint-placeholder-val="{{false}}">
+<div style="padding: 16px; color: #555555">No messages in this folder.</div>
+</sc-if>
+<sc-for list="{{mailRows}}" as="r" hint-placeholder-count="4">
+<button onClick="{{r.pick}}" style="min-height: 44px; text-align: left; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 2px; color: #151515; border: 2px solid {{r.border}}; background: {{r.bg}}">
+<span style="display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: #555555"><span>{{r.party}}</span><span>{{r.time}}</span></span>
+<span style="font-size: 15px; font-weight: {{r.weight}}">{{r.subject}}</span>
+<span style="font-size: 13px; color: #555555">{{r.state}}</span>
+</button>
+</sc-for>
+</section>
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0">
+<sc-if value="{{mailNoSel}}" hint-placeholder-val="{{false}}">
+<div style="color: #555555">Select a message to read it.</div>
+</sc-if>
+<sc-if value="{{mailHas}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 20px; font-weight: 600">{{mailCur.subject}}</h2>
+<div style="font-size: 14px; color: #555555">From {{mailCur.from}} to {{mailCur.to}} · {{mailCur.time}}</div>
+<div style="white-space: pre-line">{{mailCur.body}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><button onClick="{{replyMail}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Reply</button><button onClick="{{deleteMail}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #8A2D00; border-radius: 8px; background: #FFFFFF; color: #8A2D00; font-size: 14px; font-weight: 500">Delete</button></div>
+</div>
+</sc-if>
+</section>
+</div>
+<div style="font-size: 13px; color: #555555">Sample messages. Sent messages stay inside this prototype and are not delivered to anyone.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isTchat}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Team chat</h1>
+<div style="font-size: 14px; color: #555555">Quick conversations by team channel or one to one.</div>
+</header>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; flex: 1 1 220px; padding: 12px; gap: 6px">
+<sc-for list="{{chanViews}}" as="c" hint-placeholder-count="6">
+<button onClick="{{c.pick}}" style="min-height: 44px; text-align: left; padding: 10px 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 2px; color: #151515; border: 2px solid {{c.border}}; background: {{c.bg}}">
+<span style="font-weight: 600">{{c.name}}</span>
+<span style="font-size: 13px; color: #555555">{{c.kind}} · {{c.countLabel}}</span>
+</button>
+</sc-for>
+</section>
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; flex: 3 1 420px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 20px; font-weight: 600">{{chanName}}</h2>
+<div style="display: flex; flex-direction: column; gap: 10px; min-height: 300px; padding: 12px; background: #F5F5F4; border-radius: 8px">
+<sc-if value="{{msgNone}}" hint-placeholder-val="{{false}}">
+<div style="color: #555555">No messages yet. Write the first one below.</div>
+</sc-if>
+<sc-for list="{{msgViews}}" as="g" hint-placeholder-count="4">
+<div style="align-self: {{g.align}}; max-width: 85%; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; color: #555555">{{g.who}} · {{g.time}}</span>
+<span style="padding: 10px 14px; border-radius: 12px; border: 1px solid #DCDCDA; background: {{g.bg}}; color: {{g.fg}}">{{g.text}}</span>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<input type="text" aria-label="Write a message" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onDraftKey}}" placeholder="Write a message" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF; flex: 1 1 220px; width: auto">
+<button onClick="{{sendMsg}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Send</button>
+</div>
+</section>
+</div>
+<div style="font-size: 13px; color: #555555">Sample conversations. Only your own messages are added; nobody replies in this prototype.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isFeed}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px; max-width: 780px">
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Feed</h1>
+<div style="font-size: 14px; color: #555555">Daily posts from the AI agent: new auction cars and events from this system.</div>
+</header>
+<div style="padding: 14px 16px; background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; display: flex; flex-direction: column; gap: 4px">
+<div style="font-weight: 600">How auction cars get here</div>
+<div style="font-size: 14px; color: #555555">Saved-search alert emails from the auctions are forwarded to feed@[your app domain]. The agent reads each email and posts the cars with its own estimates. No auction password is stored.</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px">Last alert email read: today, 6:05 AM · sample data</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+<sc-for list="{{feedTabs}}" as="t" hint-placeholder-count="3">
+<button onClick="{{t.pick}}" style="min-height: 44px; padding: 8px 16px; border: 1px solid #1F1F1F; border-radius: 999px; font-size: 14px; font-weight: 500; background: {{t.bg}}; color: {{t.fg}}">{{t.label}}</button>
+</sc-for>
+<span style="font-size: 14px; color: #555555">{{feedCountLabel}}</span>
+</div>
+<sc-if value="{{feedEmpty}}" hint-placeholder-val="{{false}}">
+<div style="padding: 24px; border: 1px dashed #BBBBB8; border-radius: 10px; color: #555555">Nothing to show. New posts arrive each morning.</div>
+</sc-if>
+<sc-for list="{{feedPosts}}" as="f" hint-placeholder-count="5">
+<article style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<div aria-hidden="true" style="width: 40px; height: 40px; border-radius: 50%; background: #151515; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 14px">AI</div>
+<div style="flex: 1 1 160px; min-width: 0"><div style="font-weight: 600">AI agent</div><div style="font-size: 13px; color: #555555">{{f.time}} · {{f.source}}</div></div>
+<span style="padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; background: {{f.tagBg}}; color: {{f.tagFg}}">{{f.tag}}</span>
+</div>
+<div style="font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 19px; font-weight: 600">{{f.title}}</div>
+<div>{{f.text}}</div>
+<sc-if value="{{f.isAuction}}" hint-placeholder-val="{{true}}">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px">
+<sc-for list="{{f.stats}}" as="k" hint-placeholder-count="4">
+<div style="padding: 10px 12px; background: #F5F5F4; border-radius: 8px"><div style="font-size: 13px; color: #555555">{{k.label}}</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 17px; font-weight: 500">{{k.value}}</div></div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{f.isWatched}}" hint-placeholder-val="{{false}}">
+<div style="padding: 8px 12px; border-radius: 8px; background: #E3E8F4; color: #1F3F74; font-weight: 500">{{f.watchLabel}}</div>
+</sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-if value="{{f.canWatch}}" hint-placeholder-val="{{true}}">
+<button onClick="{{f.watch}}" style="min-height: 44px; padding: 8px 14px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 14px; font-weight: 600">Watch</button>
+</sc-if>
+<sc-if value="{{f.canWatch}}" hint-placeholder-val="{{true}}">
+<button onClick="{{f.bid}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Set max bid</button>
+</sc-if>
+<sc-if value="{{f.hasView}}" hint-placeholder-val="{{false}}">
+<button onClick="{{f.view}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">{{f.viewLabel}}</button>
+</sc-if>
+<button onClick="{{f.dismiss}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #8A8A88; border-radius: 8px; background: #FFFFFF; color: #555555; font-size: 14px; font-weight: 500">Dismiss</button>
+</div>
+</article>
+</sc-for>
+<div style="font-size: 13px; color: #555555">Auction cars and estimates are invented samples. Reading real alert emails depends on what each auction's alerts contain and on its terms of use.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isMarket}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Market check</h1>
+<div style="font-size: 14px; color: #555555">Enter the car, search comparable listings, and get a price that beats the market without giving away margin.</div>
+</header>
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Your car</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px">
+<sc-for list="{{mkFields}}" as="f" hint-placeholder-count="9">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500"><span>{{f.label}}</span><input type="text" value="{{f.value}}" onChange="{{f.change}}" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF"></label>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 14px; font-weight: 500">Drivetrain</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{mkDrive}}" as="d" hint-placeholder-count="3">
+<button onClick="{{d.pick}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #1F1F1F; border-radius: 999px; font-size: 14px; font-weight: 500; background: {{d.bg}}; color: {{d.fg}}">{{d.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 14px; font-weight: 500">Features and condition</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{mkFeat}}" as="d" hint-placeholder-count="9">
+<button onClick="{{d.pick}}" aria-pressed="{{d.on}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #1F1F1F; border-radius: 999px; font-size: 14px; font-weight: 500; background: {{d.bg}}; color: {{d.fg}}">{{d.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{mkSearch}}" style="min-height: 44px; padding: 10px 18px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Search the market</button>
+<button onClick="{{mkReset}}" style="min-height: 44px; padding: 8px 14px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Load the BMW X3 example</button>
+</div>
+</section>
+<sc-if value="{{mkHasRun}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<div style="padding: 12px 16px; border-radius: 8px; background: {{mk.noteBg}}; color: {{mk.noteFg}}; font-weight: 500">{{mk.sourceNote}}</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px">
+<div style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px"><div style="font-size: 13px; color: #555555">Market median, adjusted to your car</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 500">{{mk.medianF}}</div><div style="font-size: 13px; color: #555555">range {{mk.rangeF}}</div></div>
+<div style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px"><div style="font-size: 13px; color: #555555">Your asking price</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 500">{{mk.askF}}</div><div style="font-size: 13px; color: {{mk.posColor}}; font-weight: 500">{{mk.posLabel}}</div></div>
+<div style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px"><div style="font-size: 13px; color: #555555">Comparables used</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 500">{{mk.usedN}}</div><div style="font-size: 13px; color: #555555">{{mk.usedNote}}</div></div>
+<div style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 4px"><div style="font-size: 13px; color: #555555">Your total cost</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 500">{{mk.costF}}</div><div style="font-size: 13px; color: #555555">{{mk.costNote}}</div></div>
+</div>
+<section style="background: #121212; color: #F2F2F2; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600; color: #FFFFFF">Recommendation</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px">
+<div style="padding: 14px; border-radius: 8px; background: #3D62A8; display: flex; flex-direction: column; gap: 2px"><div style="font-size: 13px">List at</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 500; color: #FFFFFF">{{mk.listF}}</div><div style="font-size: 13px">just under the market median</div></div>
+<div style="padding: 14px; border-radius: 8px; background: #262626; display: flex; flex-direction: column; gap: 2px"><div style="font-size: 13px">Floor for negotiation</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 500; color: #FFFFFF">{{mk.floorF}}</div><div style="font-size: 13px">lowest price to accept</div></div>
+<div style="padding: 14px; border-radius: 8px; background: #262626; display: flex; flex-direction: column; gap: 2px"><div style="font-size: 13px">Margin at list price</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 500; color: #FFFFFF">{{mk.marginF}}</div><div style="font-size: 13px">{{mk.marginNote}}</div></div>
+</div>
+<div style="font-size: 15px; line-height: 1.5">{{mk.reason}}</div>
+</section>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start">
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Where you sit</h2>
+<div style="font-size: 13px; color: #555555">Each bar is a comparable, adjusted to your kilometres, year and features.</div>
+<sc-for list="{{mk.bars}}" as="b" hint-placeholder-count="8">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="flex: 0 0 150px; font-size: 13px; font-weight: {{b.weight}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{b.label}}</div>
+<div style="flex: 1 1 0; height: 14px; background: #EAEAE8; border-radius: 7px"><div style="height: 14px; border-radius: 7px; width: {{b.w}}; background: {{b.color}}"></div></div>
+<div style="flex: 0 0 72px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; text-align: right">{{b.priceF}}</div>
+</div>
+</sc-for>
+</section>
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Advantages to highlight in your listing</h2>
+<sc-if value="{{mk.noAdv}}" hint-placeholder-val="{{false}}">
+<div style="color: #555555">Nothing stands out. Add the features your car has to see where it beats the comparables.</div>
+</sc-if>
+<sc-for list="{{mk.adv}}" as="a" hint-placeholder-count="3">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; padding: 10px 12px; background: #F5F5F4; border-radius: 8px"><span style="font-weight: 600">{{a.label}}</span><span style="font-size: 14px; color: #555555">{{a.note}}</span></div>
+</sc-for>
+<div style="font-size: 13px; color: #555555">Lead with these in the photos and the first line of the listing. They justify a price near the top of the range rather than a drop.</div>
+</section>
+</div>
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">Comparable listings</h2>
+<div style="overflow-x: auto">
+<div style="min-width: 1200px; display: flex; flex-direction: column">
+<div style="display: grid; grid-template-columns: 1fr 1.4fr 0.9fr 0.8fr 1.2fr 1.7fr 1fr 2fr; gap: 12px; padding: 10px 14px; font-size: 13px; font-weight: 600; color: #555555; background: #F5F5F4; border-bottom: 1px solid #DCDCDA">
+<div>Source</div><div>Year and trim</div><div style="text-align: right">Price</div><div style="text-align: right">Km</div><div>Location</div><div>Listed features</div><div style="text-align: right">Adjusted</div><div>Status</div>
+</div>
+<sc-for list="{{mk.comps}}" as="c" hint-placeholder-count="10">
+<div style="display: grid; grid-template-columns: 1fr 1.4fr 0.9fr 0.8fr 1.2fr 1.7fr 1fr 2fr; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #EAEAE8; color: {{c.color}}">
+<div>{{c.source}}</div><div>{{c.trim}}</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">{{c.priceF}}</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right">{{c.kmF}}</div><div>{{c.loc}}</div><div style="font-size: 13px">{{c.feats}}</div><div style="font-family: 'IBM Plex Mono', monospace; text-align: right; font-weight: 600">{{c.eqF}}</div><div style="font-size: 13px">{{c.status}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</section>
+<section style="background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-size: 18px; font-weight: 600">How the adjustment works</h2>
+<div style="font-size: 14px; line-height: 1.6">Each comparable's price is converted to what it would be if it were your car: 6 cents per kilometre of difference, $1,200 per model year, and a fixed value for each feature your car has that the listing lacks, or the reverse. Features a listing does not mention are left unadjusted rather than guessed. Different trims are shown but excluded. The median of the adjusted prices is the market value; the list price sits 2% under it, the floor is 7% under it or your cost plus $800, whichever is higher.</div>
+</section>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{isNotif}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px; max-width: 900px">
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">Notification center</h1>
+<div style="font-size: 14px; color: #555555">{{unreadLabel}}</div>
+</header>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{notifTabs}}" as="t" hint-placeholder-count="2">
+<button onClick="{{t.pick}}" style="min-height: 44px; padding: 8px 16px; border: 1px solid #1F1F1F; border-radius: 999px; font-size: 14px; font-weight: 500; background: {{t.bg}}; color: {{t.fg}}">{{t.label}}</button>
+</sc-for>
+<button onClick="{{markAll}}" style="min-height: 44px; padding: 10px 16px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 15px; font-weight: 500; font-size: 14px">Mark all as read</button>
+</div>
+<sc-if value="{{notifEmpty}}" hint-placeholder-val="{{false}}">
+<div style="padding: 24px; border: 1px dashed #BBBBB8; border-radius: 10px; color: #555555">No unread notifications.</div>
+</sc-if>
+<sc-for list="{{notifs}}" as="n" hint-placeholder-count="6">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: #FFFFFF; border: 1px solid #DCDCDA; border-left: 5px solid {{n.bar}}; border-radius: 10px">
+<div style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px"><span style="padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; background: {{n.bg}}; color: {{n.fg}}">{{n.cat}}</span><span style="font-size: 13px; color: #555555">{{n.time}} · {{n.state}}</span></div>
+<div style="font-weight: {{n.weight}}">{{n.text}}</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<button onClick="{{n.view}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600; font-size: 14px; font-weight: 500">View</button>
+<sc-if value="{{n.unread}}" hint-placeholder-val="{{true}}">
+<button onClick="{{n.mark}}" style="min-height: 44px; padding: 10px 16px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 15px; font-weight: 500; font-size: 14px">Mark as read</button>
+</sc-if>
+</div>
+</div>
+</sc-for>
+<div style="font-size: 13px; color: #555555">The same alerts would also go out by push, SMS or email, based on each user's settings.</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isMod}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 20px">
+<header style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px">
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Archivo', 'Segoe UI', sans-serif; font-weight: 700; font-size: 30px">{{mod.title}}</h1>
+<div style="font-size: 14px; color: #555555">{{mod.sub}}</div>
+</div>
+<button onClick="{{mod.add}}" style="min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px; background: #1F1F1F; color: #FFFFFF; font-size: 15px; font-weight: 600">Add record</button>
+</header>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px">
+<sc-for list="{{mod.stats}}" as="k" hint-placeholder-count="5">
+<button onClick="{{k.pick}}" style="min-height: 44px; text-align: left; padding: 12px 14px; border-radius: 10px; display: flex; flex-direction: column; gap: 2px; color: #151515; border: 2px solid {{k.border}}; background: {{k.bg}}">
+<span style="font-size: 13px; color: #555555">{{k.label}}</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 500">{{k.value}}</span>
+</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+<label style="flex: 1 1 240px; max-width: 420px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500"><span>Search records</span><input type="search" value="{{searchVal}}" onChange="{{onSearch}}" placeholder="Type to filter" style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border: 1px solid #8A8A88; border-radius: 8px; font-family: inherit; font-size: 16px; color: #151515; background: #FFFFFF"></label>
+<div style="font-size: 14px; color: #555555; padding-bottom: 12px">{{mod.countLabel}}</div>
+</div>
+<div style="overflow-x: auto; background: #FFFFFF; border: 1px solid #DCDCDA; border-radius: 10px">
+<div style="min-width: 1060px; display: flex; flex-direction: column">
+<div style="display: grid; grid-template-columns: 2fr 1.4fr 1.1fr 1.1fr 1.3fr 170px; gap: 12px; padding: 12px 18px; font-size: 13px; font-weight: 600; color: #555555; background: #F5F5F4; border-bottom: 1px solid #DCDCDA">
+<div>{{mod.h1}}</div><div>{{mod.h2}}</div><div>{{mod.h3}}</div><div>{{mod.h4}}</div><div>{{mod.h5}}</div><div>Actions</div>
+</div>
+<sc-for list="{{mod.rows}}" as="r" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: 2fr 1.4fr 1.1fr 1.1fr 1.3fr 170px; gap: 12px; align-items: center; padding: 12px 18px; border-bottom: 1px solid #EAEAE8">
+<div><div style="font-weight: 600">{{r.c1}}</div><div style="font-size: 13px; color: #555555">{{r.sub}}</div></div>
+<div>{{r.c2}}</div>
+<div>{{r.c3}}</div>
+<div style="font-family: 'IBM Plex Mono', monospace; font-size: 14px">{{r.c4}}</div>
+<div><span style="display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 500; background: {{r.bg}}; color: {{r.fg}}">{{r.pill}}</span></div>
+<div style="display: flex; gap: 6px"><button onClick="{{r.edit}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #1F1F1F; border-radius: 8px; background: #FFFFFF; color: #1A1A1A; font-size: 14px; font-weight: 500">Edit</button><button onClick="{{r.del}}" style="min-height: 44px; padding: 8px 12px; border: 1px solid #8A2D00; border-radius: 8px; background: #FFFFFF; color: #8A2D00; font-size: 14px; font-weight: 500">Delete</button></div>
+</div>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{mod.empty}}" hint-placeholder-val="{{false}}">
+<div style="padding: 24px; border: 1px dashed #BBBBB8; border-radius: 10px; color: #555555">No records match. Clear the search or status filter, or add a record.</div>
+</sc-if>
+<div style="font-size: 13px; color: #555555">Sample records. Changes are kept until the page is reloaded.</div>
+</div>
+</sc-if>
+
+</main>
+</div>
+</sc-if>
+</div>
+</template>
+<script>
+(function () {
+  var root = document.getElementById('app');
+  var tpl = document.getElementById('tpl').content;
+  var EVENTS = { onclick: 'click', onchange: 'input', onkeydown: 'keydown' };
+  var WHOLE = /^\s*\{\{\s*([^}]+?)\s*\}\}\s*$/;
+  var comp = null, queued = false;
+  function DCLogic(props) { this.props = props || {}; this.state = {}; }
+  DCLogic.prototype.setState = function (upd) {
+    this.state = Object.assign({}, this.state, upd);
+    if (!queued) { queued = true; Promise.resolve().then(function () { queued = false; render(); }); }
+  };
+  DCLogic.prototype.forceUpdate = function () { this.setState({}); };
+  window.DCLogic = DCLogic;
+  function lookup(path, scope) {
+    path = path.trim();
+    if (path === 'true') return true;
+    if (path === 'false') return false;
+    if (/^-?\d+(\.\d+)?$/.test(path)) return Number(path);
+    var cur = scope, parts = path.split('.');
+    for (var i = 0; i < parts.length; i++) { if (cur == null) return undefined; cur = cur[parts[i]]; }
+    return cur;
+  }
+  function interp(text, scope) {
+    return text.replace(/\{\{\s*([^}]+?)\s*\}\}/g, function (_, p) { var v = lookup(p, scope); return v == null ? '' : String(v); });
+  }
+  function build(node, scope, out) {
+    if (node.nodeType === 3) { out.appendChild(document.createTextNode(interp(node.nodeValue, scope))); return; }
+    if (node.nodeType !== 1) return;
+    var tag = node.tagName.toLowerCase(), i, kids = node.childNodes;
+    if (tag === 'sc-if') {
+      var w = WHOLE.exec(node.getAttribute('value') || '');
+      if (w && lookup(w[1], scope)) for (i = 0; i < kids.length; i++) build(kids[i], scope, out);
+      return;
+    }
+    if (tag === 'sc-for') {
+      var lw = WHOLE.exec(node.getAttribute('list') || ''), list = lw ? lookup(lw[1], scope) : null, as = node.getAttribute('as') || 'item';
+      (list || []).forEach(function (item, idx) {
+        var s = Object.create(scope); s[as] = item; s.$index = idx;
+        for (var j = 0; j < kids.length; j++) build(kids[j], s, out);
+      });
+      return;
+    }
+    var el = document.createElement(tag), attrs = node.attributes, valueProp;
+    for (i = 0; i < attrs.length; i++) {
+      var name = attrs[i].name, raw = attrs[i].value;
+      if (name.indexOf('hint-') === 0) continue;
+      var whole = WHOLE.exec(raw);
+      if (EVENTS[name]) { var fn = whole ? lookup(whole[1], scope) : null; if (typeof fn === 'function') el.addEventListener(EVENTS[name], fn); continue; }
+      var v = whole ? lookup(whole[1], scope) : interp(raw, scope);
+      if (v == null || v === false) continue;
+      if (name === 'value') { valueProp = String(v); }
+      el.setAttribute(name, String(v));
+    }
+    for (i = 0; i < kids.length; i++) build(kids[i], scope, el);
+    if (valueProp !== undefined) el.value = valueProp;
+    out.appendChild(el);
+  }
+  function pathOf(el) { var p = []; while (el && el !== root) { var par = el.parentNode; if (!par) return null; p.unshift(Array.prototype.indexOf.call(par.childNodes, el)); el = par; } return el === root ? p : null; }
+  function atPath(p) { var el = root; for (var i = 0; i < p.length && el; i++) el = el.childNodes[p[i]]; return el; }
+  function render() {
+    var act = document.activeElement, focus = null, scrolls = [], y = window.scrollY;
+    if (act && root.contains(act) && act !== root) {
+      focus = { path: pathOf(act), tag: act.tagName, s: null, e: null };
+      try { focus.s = act.selectionStart; focus.e = act.selectionEnd; } catch (err) {}
+    }
+    Array.prototype.forEach.call(root.querySelectorAll('*'), function (el) { if (el.scrollTop || el.scrollLeft) scrolls.push([pathOf(el), el.scrollTop, el.scrollLeft]); });
+    var frag = document.createDocumentFragment(), vals;
+    try { vals = comp.renderVals(); } catch (err) { console.error(err); return; }
+    for (var i = 0; i < tpl.childNodes.length; i++) build(tpl.childNodes[i], vals, frag);
+    root.replaceChildren(frag);
+    scrolls.forEach(function (sc) { var el = sc[0] && atPath(sc[0]); if (el && el.nodeType === 1) { el.scrollTop = sc[1]; el.scrollLeft = sc[2]; } });
+    if (focus && focus.path) {
+      var t = atPath(focus.path);
+      if (t && t.nodeType === 1 && t.tagName === focus.tag) { t.focus({ preventScroll: true }); if (focus.s != null) { try { t.setSelectionRange(focus.s, focus.e); } catch (err) {} } }
+    }
+    window.scrollTo(window.scrollX, y);
+  }
+  window.__start = function (C, props) { comp = new C(props); window.__comp = comp; render(); };
+})();
+</script>
+<script>
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { screen: 'dash', carId: 'x3', chat: [] };
+  }
+  renderVals() {
+    var self = this;
+    var st = this.state || {};
+    var screen = st.screen || 'dash';
+    var limit = this.props.agingLimit != null ? this.props.agingLimit : 90;
+    var money = function (n) { return n == null ? 'Not listed' : '$' + n.toLocaleString('en-CA'); };
+    var raw = st.cars || [
+      { id: 'caravan', name: '2015 Dodge Grand Caravan SXT', stock: 'A-0312', source: 'ADESA Toronto', loc: 'Carrier trailer, not collected', days: 742, km: 168000, buy: 5400, fee: 450, trans: 450, recon: 0, list: null, median: 9800, stage: 0, recKind: 'List', rec: 'Collect the car and list at $9,500. It was never picked up and has not been listed since purchase.' },
+      { id: 'x3', name: '2019 BMW X3 xDrive30i', stock: 'A-0588', source: 'Manheim Toronto', loc: 'Main lot', days: 104, km: 98000, buy: 18400, fee: 650, trans: 250, recon: 1300, list: 24900, median: 22700, stage: 3, recKind: 'Drop', rec: 'Drop to $22,250. Listed about 10% above similar cars and aging past the limit. Open Market check for the comparables.' },
+      { id: 'equinox', name: '2018 Audi Q5 Komfort quattro', stock: 'A-0594', source: 'ADESA Toronto', loc: 'Main lot', days: 96, km: 118000, buy: 16900, fee: 600, trans: 250, recon: 950, list: 23900, median: 22800, stage: 3, recKind: 'Drop', rec: 'Drop to $22,900. Similar listings have moved down over the last month.' },
+      { id: 'elantra', name: '2018 Kia Stinger GT Limited AWD', stock: 'A-0611', source: 'Manheim Toronto', loc: 'Overflow lot', days: 71, km: 104000, buy: 21400, fee: 650, trans: 250, recon: 800, list: 28900, median: 27900, stage: 3, recKind: 'Drop', rec: 'Drop to $27,900 to match the market before it reaches the aging limit.' },
+      { id: 'f150', name: '2020 Lexus RX 350', stock: 'A-0619', source: 'ADESA Toronto', loc: 'Main lot', days: 58, km: 86000, buy: 31500, fee: 800, trans: 400, recon: 1100, list: 38900, median: 37800, stage: 3, recKind: 'Drop', rec: 'Consider $37,900 within two weeks if no offers come in.' },
+      { id: 'rav4', name: '2021 Toyota Highlander XLE AWD', stock: 'A-0633', source: 'Manheim Toronto', loc: 'Main lot, sale pending', days: 34, km: 92000, buy: 30300, fee: 650, trans: 250, recon: 900, list: 37500, median: 37200, stage: 3, recKind: 'Hold', rec: 'Hold. Price is in line with the market and a buyer is waiting on bank approval.' },
+      { id: 'forte', name: '2020 Acura RDX Tech', stock: 'A-0640', source: 'ADESA Toronto', loc: 'Main lot', days: 22, km: 78000, buy: 26700, fee: 650, trans: 250, recon: 650, list: 32500, median: 32300, stage: 3, recKind: 'Hold', rec: 'Hold. Priced close to the market median.' },
+      { id: 'civic', name: '2019 Honda Civic LX', stock: 'A-0646', source: 'Manheim Toronto', loc: 'Main lot', days: 12, km: 89000, buy: 15600, fee: 550, trans: 250, recon: 1000, list: 20900, median: 21400, stage: 3, recKind: 'Hold', rec: 'Hold. Priced slightly below similar cars, expect quick interest.' },
+      { id: 'rogue', name: '2019 Mercedes-Benz C 300 4MATIC', stock: 'A-0651', source: 'ADESA Toronto', loc: 'Auction yard, awaiting pickup', days: 6, km: 92000, buy: 21400, fee: 650, trans: 250, recon: 0, list: null, median: 27400, stage: 0, recKind: 'List', rec: 'List at $27,500 once the safety inspection is done.' },
+      { id: 'cx5', name: '2022 Mercedes-Benz GLC 300 Coupe', stock: 'A-0653', source: 'Manheim Toronto', loc: 'In transit', days: 3, km: 61000, buy: 33700, fee: 700, trans: 300, recon: 0, list: null, median: 39900, stage: 1, recKind: 'List', rec: 'List at $39,900 on arrival.' }
+    ];
+    var open = function (id) { return function () { self.setState({ screen: 'car', carId: id }); }; };
+    var rows = raw.map(function (c) {
+      var cost = c.buy + c.fee + c.trans + c.recon;
+      var bg = '#E7E7E5', fg = '#1A1A1A';
+      if (c.days > limit) { bg = '#B4470E'; fg = '#FFFFFF'; }
+      else if (c.days > limit * 2 / 3) { bg = '#FBE6C8'; fg = '#6B3600'; }
+      else if (c.days > limit / 3) { bg = '#E3E8F4'; fg = '#1F3F74'; }
+      var recBg = '#E7E7E5', recFg = '#1A1A1A';
+      if (c.recKind === 'Drop') { recBg = '#FBE6C8'; recFg = '#6B3600'; }
+      if (c.recKind === 'List') { recBg = '#E3E8F4'; recFg = '#1F3F74'; }
+      return Object.assign({}, c, {
+        cost: cost, costF: money(cost), listF: money(c.list), buyF: money(c.buy), feeF: money(c.fee),
+        transF: money(c.trans), reconF: money(c.recon), medianF: money(c.median),
+        kmF: c.km.toLocaleString('en-CA') + ' km', ageBg: bg, ageFg: fg, recBg: recBg, recFg: recFg, open: open(c.id)
+      });
+    });
+    rows.sort(function (a, b) { return b.days - a.days; });
+    var capital = 0, overCount = 0, overCapital = 0;
+    var counts = [0, 0, 0, 0];
+    var selB = st.bucket != null ? st.bucket : 3;
+    var bIndex = function (d) { return d > limit ? 3 : (d > limit * 2 / 3 ? 2 : (d > limit / 3 ? 1 : 0)); };
+    rows.forEach(function (r) {
+      capital += r.cost;
+      if (r.days > limit) { overCount += 1; overCapital += r.cost; counts[3] += 1; }
+      else if (r.days > limit * 2 / 3) counts[2] += 1;
+      else if (r.days > limit / 3) counts[1] += 1;
+      else counts[0] += 1;
+    });
+    var t1 = Math.round(limit / 3), t2 = Math.round(limit * 2 / 3);
+    var bLabels = ['0 to ' + t1 + ' days', (t1 + 1) + ' to ' + t2 + ' days', (t2 + 1) + ' to ' + limit + ' days', 'Over ' + limit + ' days'];
+    var bColors = ['#1F1F1F', '#3D62A8', '#D9902F', '#B4470E'];
+    var buckets = counts.map(function (n, i) {
+      var on = selB === i;
+      return { label: bLabels[i], count: n + (n === 1 ? ' car' : ' cars'), pct: Math.round(n / (rows.length || 1) * 100) + '%', color: bColors[i],
+        border: on ? '#1F1F1F' : '#DCDCDA', bg: on ? '#F5F5F4' : '#FFFFFF', pick: function () { self.setState({ bucket: i }); } };
+    });
+    var over = rows.filter(function (r) { return r.days > limit; });
+    var alerts = over.map(function (r) {
+      return { name: r.name, note: r.days + ' days · ' + r.loc + ' · ' + r.costF + ' tied up', open: r.open };
+    });
+    var car = rows.filter(function (r) { return r.id === st.carId; })[0] || rows[0] || { id: '', name: 'No cars in stock', stock: 'none', kmF: '0 km', source: 'none', loc: 'none', days: 0, ageBg: '#E7E7E5', ageFg: '#1A1A1A', stage: -1, km: 0, median: 0, buyF: '$0', feeF: '$0', transF: '$0', reconF: '$0', costF: '$0', listF: 'Not listed', medianF: '$0', recKind: 'None', recBg: '#E7E7E5', recFg: '#1A1A1A', rec: 'Add a car to see a recommendation.' };
+    var stepNames = ['Purchased at auction', 'Picked up', 'Safety and recon', 'Listed for sale', 'Sold'];
+    var steps = stepNames.map(function (label, i) {
+      var done = i <= car.stage;
+      var next = i === car.stage + 1;
+      return {
+        label: label,
+        state: done ? 'Done' : (next ? 'Next step' : 'Waiting'),
+        bg: done ? '#E7E7E5' : (next ? '#FBF1E2' : '#FFFFFF'),
+        fg: done ? '#1A1A1A' : (next ? '#6B3600' : '#555555'),
+        border: done ? '#BDBDBA' : (next ? '#E0B77A' : '#DCDCDA')
+      };
+    });
+    var comps = [[-600, 8000], [300, -5000], [900, -14000]].map(function (d, i) {
+      return { label: 'Listing ' + (i + 1), km: (car.km + d[1]).toLocaleString('en-CA') + ' km', price: money(car.median + d[0]) };
+    });
+    var kinds = { bad: ['#B4470E', '#FFFFFF'], warn: ['#FBE6C8', '#6B3600'], ok: ['#E7E7E5', '#1A1A1A'], info: ['#E3E8F4', '#1F3F74'] };
+    var mk = function (title, sub, heads, stats, rws) {
+      return {
+        raw: rws, title: title, sub: sub, h1: heads[0], h2: heads[1], h3: heads[2], h4: heads[3], h5: heads[4],
+        stats: stats.map(function (x) { return { label: x[0], value: x[1] }; }),
+        rows: rws.map(function (x) { return { c1: x[0], sub: x[1], c2: x[2], c3: x[3], c4: x[4], pill: x[5], bg: kinds[x[6]][0], fg: kinds[x[6]][1] }; })
+      };
+    };
+    var mods = {
+      purch: mk('Purchasing and auctions', 'Every auction purchase tracked from winning bid to arrival on the lot.',
+        ['Vehicle', 'Auction', 'Bought', 'Payment', 'Pickup status'],
+        [['Awaiting pickup', '2 cars'], ['In transit', '1 car'], ['Auction payments due', '$34,700']],
+        [['2015 Dodge Grand Caravan SXT', 'Stock A-0312', 'ADESA Toronto', 'Sep 22, 2024', 'Paid', 'Not collected, 742 days', 'bad'],
+         ['2019 Mercedes-Benz C 300 4MATIC', 'Stock A-0651', 'ADESA Toronto', 'Sep 28', 'Paid', 'Awaiting pickup, 6 days', 'warn'],
+         ['2022 Mercedes-Benz GLC 300 Coupe', 'Stock A-0653', 'Manheim Toronto', 'Oct 1', 'Cheque due Oct 6', 'In transit', 'info'],
+         ['2020 BMW 530i xDrive', 'Watchlist', 'ADESA Toronto', 'Sale on Oct 7', 'Max bid $24,000', 'Watching', 'info']]),
+      recon: mk('Reconditioning and safety', 'Inspection, repairs and cost per car before it is listed.',
+        ['Vehicle', 'Work', 'Shop', 'Cost', 'Status'],
+        [['Waiting for work', '2 cars'], ['Completed', '3 cars'], ['Recon spend on current stock', '$3,050']],
+        [['2019 Mercedes-Benz C 300 4MATIC', 'Stock A-0651', 'Safety inspection', '[Shop name]', 'Not quoted', 'Waiting for car', 'warn'],
+         ['2022 Mercedes-Benz GLC 300 Coupe', 'Stock A-0653', 'Safety inspection, detailing', '[Shop name]', 'Not quoted', 'Scheduled on arrival', 'info'],
+         ['2019 BMW X3 xDrive30i', 'Stock A-0588', 'Brakes, tires, detailing', '[Shop name]', '$1,300', 'Complete', 'ok'],
+         ['2018 Audi Q5 Komfort quattro', 'Stock A-0594', 'Windshield, detailing', '[Shop name]', '$950', 'Complete', 'ok'],
+         ['2018 Kia Stinger GT Limited AWD', 'Stock A-0611', 'Oil service, detailing', '[Shop name]', '$800', 'Complete', 'ok']]),
+      sales: mk('Sales and deals', 'Open deals from first offer to delivery. Prices are before HST and licensing.',
+        ['Customer', 'Vehicle', 'Deposit', 'Price', 'Stage'],
+        [['Open deals', '3'], ['Sold in September', '6 cars'], ['Deposits held', '$1,500']],
+        [['Customer A', 'Financing through bank', '2021 Toyota Highlander XLE AWD', '$1,000', '$37,500', 'Waiting on bank approval', 'warn'],
+         ['Customer B', 'Cash buyer', '2019 Honda Civic LX', '$500', '$20,900', 'Test drive Oct 6', 'info'],
+         ['Customer C', 'Has a trade-in', '2020 Acura RDX Tech', 'None', '$32,500', 'Trade-in appraisal', 'info'],
+         ['Customer D', 'Financed', '2019 Lexus NX 300', 'Paid in full', '$31,400', 'Delivered Sep 29', 'ok']]),
+      crm: mk('Customers and follow-ups', 'Leads from the website forms, phone and walk-ins, each with a next action.',
+        ['Lead', 'Source', 'Interested in', 'Last contact', 'Next action'],
+        [['Open leads', '5'], ['Overdue follow-ups', '2'], ['New this week', '3']],
+        [['Customer E', 'Wants financing', 'Website financing form', '2020 Lexus RX 350', 'Sep 30', 'Call back, overdue', 'bad'],
+         ['Customer F', 'Visited the lot', 'Walk-in', '2019 BMW X3 xDrive30i', 'Sep 27', 'Follow up, overdue', 'bad'],
+         ['Customer B', 'Cash buyer', 'Website test drive form', '2019 Honda Civic LX', 'Oct 3', 'Test drive Oct 6', 'info'],
+         ['Customer C', 'Has a trade-in', 'Website trade-in form', '2020 Acura RDX Tech', 'Oct 2', 'Send appraisal', 'warn'],
+         ['Customer G', 'Asked about price', 'Phone', '2018 Audi Q5 Komfort quattro', 'Oct 1', 'Send price update', 'warn']]),
+      fin: mk('Financing and banks', 'Customer credit applications, lender approvals, funding and floor plan.',
+        ['Customer', 'Vehicle', 'Lender', 'Amount', 'Status'],
+        [['Pending approvals', '2'], ['Funded this month', '$22,000'], ['Floor plan interest due', '$1,240']],
+        [['Customer A', 'Applied Sep 29', '2021 Toyota Highlander XLE AWD', '[Lender 1]', '$12,000', 'Approval pending, 5 days', 'warn'],
+         ['Customer E', 'Applied Sep 30', '2020 Lexus RX 350', '[Lender 2]', '$30,000', 'Application submitted', 'info'],
+         ['Customer D', 'Applied Sep 24', '2019 Lexus NX 300', '[Lender 1]', '$22,000', 'Funded Oct 1', 'ok'],
+         ['Floor plan', 'Monthly interest', '4 cars financed', '[Floor plan lender]', '$1,240', 'Due Oct 9', 'warn']]),
+      pay: mk('Payments and cheques', 'Everything to pay, to receive and to deposit, in date order.',
+        ['Item', 'Party', 'Date', 'Amount', 'Status'],
+        [['To pay this week', '$35,940'], ['To receive', '$20,500'], ['Cheques to deposit', '1']],
+        [['Cheque to auction', '2022 Mercedes-Benz GLC 300 Coupe', 'Manheim Toronto', 'Oct 6', '$34,700', 'To pay', 'warn'],
+         ['Post-dated cheque', 'Balance on a September sale', 'Customer H', 'Oct 7', '$8,500', 'To deposit', 'info'],
+         ['Floor plan interest', 'Monthly', '[Floor plan lender]', 'Oct 9', '$1,240', 'To pay', 'warn'],
+         ['Lender funding', '2021 Toyota Highlander XLE AWD', '[Lender 1]', 'No date yet', '$12,000', 'Waiting on bank', 'warn'],
+         ['Reconditioning invoice', '2018 Audi Q5 Komfort quattro', '[Shop name]', 'Sep 30', '$950', 'Paid', 'ok']]),
+      tasks: mk('Notifications and tasks', 'Reminders raised by the system and sent by push, SMS or email.',
+        ['Task', 'Related to', 'Assigned to', 'Due', 'Status'],
+        [['Open tasks', '5'], ['Overdue', '2'], ['Raised automatically', '4']],
+        [['Collect Grand Caravan from carrier trailer', 'Aging alert', 'Stock A-0312', 'Owner', 'Overdue', 'Overdue', 'bad'],
+         ['Call back Customer E', 'Lead follow-up', 'Financing lead', '[Staff name]', 'Oct 1', 'Overdue', 'bad'],
+         ['Arrange pickup of C 300', 'Auction pickup', 'Stock A-0651', '[Staff name]', 'Oct 5', 'Open', 'warn'],
+         ['Review price drop on BMW X3', 'AI pricing alert', 'Stock A-0588', 'Owner', 'Oct 5', 'Open', 'warn'],
+         ['Call bank about Highlander approval', 'Financing', 'Customer A', '[Staff name]', 'Oct 5', 'Open', 'warn']]),
+      mkt: mk('Marketing campaigns', 'Email, SMS and social campaigns tied to stock and leads. Consent for email and SMS is tracked for CASL.',
+        ['Campaign', 'Channel', 'Audience', 'Results', 'Status'],
+        [['Active campaigns', '2'], ['Leads from campaigns, September', '17'], ['Contacts with consent', '412']],
+        [['Aged stock price drop', 'Cars over 90 days', 'Email and SMS', 'Past SUV leads, 86', '9 leads', 'Active', 'ok'],
+         ['Trade-in appraisal offer', 'Started Sep 15', 'Email', 'Past buyers, 138', '5 leads', 'Active', 'ok'],
+         ['Thanksgiving weekend event', 'Sends Oct 9', 'Email and social', 'All contacts, 412', 'Not sent yet', 'Scheduled', 'info'],
+         ['New arrivals alert', 'Ended Sep 30', 'SMS', 'Luxury SUV watchers, 54', '3 leads', 'Ended', 'ok'],
+         ['Financing pre-approval', 'Not scheduled', 'Social ads', 'To be defined', 'No results yet', 'Draft', 'warn']]),
+      users: mk('User management', 'Everyone who can sign in, their role and their two-step verification status.',
+        ['User', 'Role', 'Email', 'Last sign-in', 'Status'],
+        [],
+        [['Owner', 'Two-step verification on', 'Owner', 'owner@example.com', 'Today, 9:12 AM', 'Active', 'ok'],
+         ['[Sales manager name]', 'Two-step verification on', 'Sales manager', 'sales.manager@example.com', 'Oct 3', 'Active', 'ok'],
+         ['[Sales staff name]', 'Two-step verification on', 'Sales staff', 'sales@example.com', 'Today, 8:40 AM', 'Active', 'ok'],
+         ['[Bookkeeper name]', 'Two-step verification on', 'Bookkeeper', 'accounts@example.com', 'Oct 2', 'Active', 'ok'],
+         ['[Lot attendant name]', 'Two-step verification not set up', 'Lot attendant', 'lot@example.com', 'Never', 'Invited', 'warn']]),
+      roles: mk('Roles and permissions', 'What each role can open and what it is allowed to approve.',
+        ['Role', 'Access', 'Can approve', 'Users', 'Status'],
+        [],
+        [['Owner', 'Full control', 'All modules', 'Payments, exit permits, price changes', '1', 'Active', 'ok'],
+         ['Sales manager', 'Leads the sales team', 'Sales, customers, marketing, inventory', 'Deals, exit permits', '1', 'Active', 'ok'],
+         ['Sales staff', 'Day-to-day selling', 'Sales, customers, tasks', 'Nothing', '1', 'Active', 'ok'],
+         ['Bookkeeper', 'Money in and out', 'Payments, financing, reports', 'Nothing, prepares payments', '1', 'Active', 'ok'],
+         ['Lot attendant', 'Moves and releases cars', 'Inventory, locations', 'Nothing, checks exit permits', '1', 'Active', 'ok']]),
+      admin: mk('Integrations', 'Links between this system and other systems.',
+        ['Integration', 'Type', 'Purpose', 'Last activity', 'Status'],
+        [],
+        [['Website listing sync', 'Carpages.ca, to be confirmed', 'Website', 'Publish stock to the website', 'Not started', 'Planned', 'info'],
+         ['Accounting export', '[Accounting system]', 'Finance', 'Send sales and payments', 'Not started', 'Planned', 'info'],
+         ['SMS and email gateway', '[Provider]', 'Messaging', 'Send alerts and campaigns', 'Not started', 'Planned', 'info'],
+         ['Market data for AI pricing', 'Source to be confirmed', 'Data', 'Comparable listings', 'Not started', 'Planned', 'info']])
+    };
+    var mod = mods[screen] || mk('', '', ['', '', '', '', ''], [], []);
+
+
+    var auditList = st.audit || [
+      { time: 'Oct 4, 9:12 AM', user: 'Owner', action: 'Signed in with two-step verification', module: 'Security', target: 'Owner account' },
+      { time: 'Oct 4, 8:00 AM', user: 'System', action: 'Aging alert raised', module: 'Inventory', target: '2015 Dodge Grand Caravan SXT' },
+      { time: 'Oct 4, 7:30 AM', user: 'AI pricing agent', action: 'Price recommendation created', module: 'Car card', target: '2019 BMW X3 xDrive30i' },
+      { time: 'Oct 3, 4:41 PM', user: '[Sales staff name]', action: 'Lead updated', module: 'Customers', target: 'Customer B' },
+      { time: 'Oct 2, 2:15 PM', user: '[Bookkeeper name]', action: 'Payment recorded', module: 'Payments', target: 'Reconditioning invoice, $950' },
+      { time: 'Oct 1, 11:02 AM', user: '[Bookkeeper name]', action: 'Funding confirmed', module: 'Financing', target: 'Customer D, $22,000' },
+      { time: 'Oct 1, 10:20 AM', user: 'Owner', action: 'Car added', module: 'Purchasing', target: '2022 Mercedes-Benz GLC 300 Coupe' }
+    ];
+    var entry = function (action, module, target) {
+      var t = new Date().toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return [{ time: t, user: 'Owner', action: action, module: module, target: target }].concat(auditList);
+    };
+    var act = function (upd, module, target) {
+      upd.audit = entry(String(upd.toast || 'Change saved').split('.')[0], module, target);
+      self.setState(upd);
+    };
+    var q = (st.q || '').toLowerCase();
+    var kf = st.kf || null;
+    var data = st.data || {};
+    var kindNames = { bad: 'Needs attention', warn: 'Pending', info: 'In progress', ok: 'Done' };
+    var modList = function (k) {
+      return data[k] || mods[k].raw.map(function (x, i) { return { id: k + i, c1: x[0], sub: x[1], c2: x[2], c3: x[3], c4: x[4], pill: x[5], kind: x[6] }; });
+    };
+    var setForm = function (f) { self.setState({ form: f }); };
+    var list = mods[screen] ? modList(screen) : [];
+    var shownRows = list.filter(function (r) {
+      if (kf && r.kind !== kf) return false;
+      if (!q) return true;
+      return [r.c1, r.sub, r.c2, r.c3, r.c4, r.pill].join(' ').toLowerCase().indexOf(q) !== -1;
+    });
+    mod.rows = shownRows.map(function (r) {
+      return Object.assign({}, r, { bg: kinds[r.kind][0], fg: kinds[r.kind][1],
+        edit: function () { setForm({ scope: 'mod', key: screen, id: r.id, kind: r.kind, vals: { c1: r.c1, sub: r.sub, c2: r.c2, c3: r.c3, c4: r.c4, pill: r.pill } }); },
+        del: function () { self.setState({ confirm: { scope: 'mod', key: screen, id: r.id, label: r.c1 } }); } });
+    });
+    mod.stats = ['all', 'bad', 'warn', 'info', 'ok'].map(function (k) {
+      var on = k === 'all' ? !kf : kf === k;
+      var n = k === 'all' ? list.length : list.filter(function (r) { return r.kind === k; }).length;
+      return { label: k === 'all' ? 'All records' : kindNames[k], value: String(n), border: on ? '#1F1F1F' : '#DCDCDA', bg: on ? '#F5F5F4' : '#FFFFFF',
+        pick: function () { self.setState({ kf: k === 'all' ? null : k }); } };
+    });
+    mod.add = function () { setForm({ scope: 'mod', key: screen, id: null, kind: 'info', vals: { c1: '', sub: '', c2: '', c3: '', c4: '', pill: '' } }); };
+    mod.empty = shownRows.length === 0;
+    mod.countLabel = shownRows.length + ' of ' + list.length + ' records shown';
+    var carVals = function (r) {
+      return { name: r.name, stock: r.stock, source: r.source, loc: r.loc, days: String(r.days), km: String(r.km), buy: String(r.buy), fee: String(r.fee), trans: String(r.trans), recon: String(r.recon), list: r.list == null ? '' : String(r.list), median: String(r.median) };
+    };
+    var editCar = function (r) { return function () { setForm({ scope: 'car', id: r.id, vals: carVals(r) }); }; };
+    var delCar = function (r) { return function () { self.setState({ confirm: { scope: 'car', id: r.id, label: r.name } }); }; };
+    var invRows = rows.filter(function (r) {
+      return !q || [r.name, r.stock, r.loc, r.source].join(' ').toLowerCase().indexOf(q) !== -1;
+    }).map(function (r) { return Object.assign({}, r, { edit: editCar(r), del: delCar(r) }); });
+    var addCar = function () { setForm({ scope: 'car', id: null, vals: { name: '', stock: '', source: '', loc: 'Main lot', days: '0', km: '', buy: '', fee: '', trans: '', recon: '', list: '', median: '' } }); };
+    var noop = function () {};
+    var form = st.form || null;
+    var formView = { open: !!form, title: '', fields: [], showKinds: false, kindBtns: [], hasError: false, error: '' };
+    if (form) {
+      var fld = function (k, label) {
+        return { label: label, value: form.vals[k] == null ? '' : form.vals[k], change: function (e) {
+          var v = Object.assign({}, form.vals); v[k] = e.target.value; setForm(Object.assign({}, form, { vals: v, error: '' }));
+        } };
+      };
+      if (form.scope === 'mod') {
+        var fm = mods[form.key];
+        formView.title = (form.id ? 'Edit record' : 'Add record') + ' in ' + fm.title;
+        formView.fields = [fld('c1', fm.h1), fld('sub', 'Details'), fld('c2', fm.h2), fld('c3', fm.h3), fld('c4', fm.h4), fld('pill', fm.h5 + ' label')];
+        formView.showKinds = true;
+        formView.kindBtns = ['bad', 'warn', 'info', 'ok'].map(function (k) {
+          return { label: kindNames[k], bg: kinds[k][0], fg: kinds[k][1], border: form.kind === k ? '#151515' : kinds[k][0],
+            pick: function () { setForm(Object.assign({}, form, { kind: k })); } };
+        });
+      } else if (form.scope === 'bid') {
+        formView.title = 'Set max bid';
+        formView.fields = [fld('bid', 'Maximum bid, dollars')];
+      } else if (form.scope === 'mail') {
+        formView.title = 'New message';
+        formView.fields = [fld('to', 'To'), fld('subject', 'Subject'), fld('body', 'Message')];
+      } else if (form.scope === 'wf') {
+        formView.title = form.id ? 'Edit workflow' : 'Add workflow';
+        formView.fields = [fld('name', 'Workflow name'), fld('trigger', 'Starts when')];
+      } else if (form.scope === 'step') {
+        formView.title = form.id ? 'Edit step' : 'Add step';
+        formView.fields = [fld('title', 'Step'), fld('who', 'Role responsible'), fld('detail', 'What happens')];
+      } else if (form.scope === 'loc') {
+        formView.title = form.id ? 'Edit location' : 'Add location';
+        formView.fields = [fld('name', 'Location name'), fld('type', 'Type'), fld('address', 'Address'), fld('capacity', 'Capacity, cars')];
+      } else {
+        formView.title = form.id ? 'Edit car' : 'Add car';
+        formView.fields = [fld('name', 'Vehicle'), fld('stock', 'Stock number'), fld('source', 'Auction'), fld('loc', 'Location'), fld('days', 'Days in stock'), fld('km', 'Odometer, km'),
+          fld('buy', 'Purchase price'), fld('fee', 'Auction fees'), fld('trans', 'Transport'), fld('recon', 'Safety and reconditioning'), fld('list', 'List price, blank if not listed'), fld('median', 'Market median')];
+      }
+      formView.hasError = !!form.error;
+      formView.error = form.error || '';
+    }
+    var saveForm = function () {
+      if (!form) return;
+      var first = form.scope === 'mod' ? 'c1' : (form.scope === 'step' ? 'title' : (form.scope === 'mail' ? 'to' : (form.scope === 'bid' ? 'bid' : 'name')));
+      if (!String(form.vals[first] || '').trim()) { setForm(Object.assign({}, form, { error: 'Fill in the first field before saving.' })); return; }
+      if (form.scope === 'mod') {
+        var rec = Object.assign({ id: form.id || form.key + Date.now(), kind: form.kind }, form.vals);
+        if (!String(rec.pill || '').trim()) rec.pill = kindNames[form.kind];
+        var cur = modList(form.key);
+        cur = form.id ? cur.map(function (r) { return r.id === form.id ? rec : r; }) : [rec].concat(cur);
+        var d = Object.assign({}, data); d[form.key] = cur;
+        act({ data: d, form: null, toast: form.id ? 'Record updated.' : 'Record added.' }, mods[form.key].title, rec.c1);
+      } else if (form.scope === 'bid') {
+        var bn = parseInt(String(form.vals.bid).replace(/[^0-9]/g, ''), 10);
+        if (isNaN(bn) || bn <= 0) { setForm(Object.assign({}, form, { error: 'Enter the maximum bid as a number.' })); return; }
+        var bc = feedCars.filter(function (x) { return x.id === form.postId; })[0];
+        if (bc) watchCar(bc, 'Max bid ' + money(bn));
+      } else if (form.scope === 'mail') {
+        var nm = { id: 'm' + Date.now(), folder: 'sent', from: 'Owner', to: String(form.vals.to).trim(), subject: String(form.vals.subject || '').trim() || 'No subject', body: form.vals.body || '', time: nowT(), read: true };
+        act({ mails: [nm].concat(mailList), form: null, mailFolder: 'sent', selMail: nm.id, toast: 'Message sent.' }, 'Internal mail', nm.subject);
+      } else if (form.scope === 'wf') {
+        var wn = String(form.vals.name).trim();
+        var wid = form.id || 'w' + Date.now();
+        var wl = form.id ? wfList.map(function (w) { return w.id === form.id ? Object.assign({}, w, { name: wn, trigger: form.vals.trigger || 'Not set' }) : w; })
+          : wfList.concat([{ id: wid, name: wn, trigger: form.vals.trigger || 'Not set', steps: [] }]);
+        act({ wfs: wl, form: null, selWf: wid, toast: form.id ? 'Workflow updated.' : 'Workflow added.' }, 'Workflows', wn);
+      } else if (form.scope === 'step') {
+        var sv = { id: form.id || 's' + Date.now(), title: String(form.vals.title).trim(), who: form.vals.who || 'Not assigned', detail: form.vals.detail || '' };
+        act({ wfs: wfList.map(function (w) {
+          if (w.id !== form.wfId) return w;
+          return Object.assign({}, w, { steps: form.id ? w.steps.map(function (x) { return x.id === form.id ? sv : x; }) : w.steps.concat([sv]) });
+        }), form: null, toast: form.id ? 'Workflow step updated.' : 'Workflow step added.' }, 'Workflows', sv.title);
+      } else if (form.scope === 'loc') {
+        var lv = form.vals, lname = String(lv.name).trim();
+        var old = form.id ? locList.filter(function (l) { return l.id === form.id; })[0] : null;
+        var nl = Object.assign({}, old || { id: 'l' + Date.now(), x: 12 + (locList.length * 23) % 76, y: 8 }, { name: lname, type: lv.type || 'Not set', address: lv.address || 'Not set', capacity: String(lv.capacity || '').replace(/[^0-9]/g, '') });
+        var upd = { locs: old ? locList.map(function (l) { return l.id === old.id ? nl : l; }) : locList.concat([nl]), form: null, selLoc: lname, toast: old ? 'Location updated.' : 'Location added.' };
+        if (old && old.name !== lname) upd.cars = raw.map(function (c) { return c.loc.split(',')[0] === old.name ? Object.assign({}, c, { loc: lname + c.loc.slice(old.name.length) }) : c; });
+        act(upd, 'Location management', lname);
+      } else {
+        var num = function (v) { var n = parseInt(String(v == null ? '' : v).replace(/[^0-9]/g, ''), 10); return isNaN(n) ? 0 : n; };
+        var v = form.vals;
+        var base = form.id ? raw.filter(function (c) { return c.id === form.id; })[0] : { stage: 0, recKind: 'List', rec: 'New car. A price recommendation appears after the next market check.' };
+        var nc = Object.assign({}, base, { id: form.id || 'c' + Date.now(), name: String(v.name).trim(), stock: v.stock || 'Not set', source: v.source || 'Not set', loc: v.loc || 'Not set',
+          days: num(v.days), km: num(v.km), buy: num(v.buy), fee: num(v.fee), trans: num(v.trans), recon: num(v.recon), list: String(v.list || '').trim() ? num(v.list) : null, median: num(v.median) });
+        var cars2 = form.id ? raw.map(function (c) { return c.id === form.id ? nc : c; }) : raw.concat([nc]);
+        act({ cars: cars2, form: null, carId: nc.id, toast: form.id ? 'Car updated.' : 'Car added.' }, 'Inventory', nc.name);
+      }
+    };
+    var conf = st.confirm || null;
+    var confirmView = { open: !!conf, text: conf ? conf.label + ' will be removed. This cannot be undone.' : '' };
+    var doDelete = function () {
+      if (!conf) return;
+      if (conf.scope === 'mod') {
+        var d = Object.assign({}, data); d[conf.key] = modList(conf.key).filter(function (r) { return r.id !== conf.id; });
+        act({ data: d, confirm: null, toast: 'Record deleted.' }, mods[conf.key].title, conf.label);
+      } else if (conf.scope === 'mail') {
+        act({ mails: mailList.filter(function (x) { return x.id !== conf.id; }), confirm: null, selMail: null, toast: 'Message deleted.' }, 'Internal mail', conf.label);
+      } else if (conf.scope === 'wf') {
+        act({ wfs: wfList.filter(function (w) { return w.id !== conf.id; }), confirm: null, selWf: null, toast: 'Workflow deleted.' }, 'Workflows', conf.label);
+      } else if (conf.scope === 'step') {
+        act({ wfs: wfList.map(function (w) { return w.id !== conf.wfId ? w : Object.assign({}, w, { steps: w.steps.filter(function (x) { return x.id !== conf.id; }) }); }), confirm: null, toast: 'Workflow step deleted.' }, 'Workflows', conf.label);
+      } else if (conf.scope === 'loc') {
+        act({ locs: locList.filter(function (l) { return l.id !== conf.id; }), confirm: null, toast: 'Location deleted. Its cars are now unassigned.' }, 'Location management', conf.label);
+      } else {
+        act({ cars: raw.filter(function (c) { return c.id !== conf.id; }), confirm: null, toast: 'Car deleted.', screen: screen === 'car' ? 'inv' : screen }, 'Inventory', conf.label);
+      }
+    };
+    var bucketCars = rows.filter(function (r) { return bIndex(r.days) === selB; });
+    var bucketTitle = bucketCars.length ? 'Cars in the selected range: ' + bLabels[selB] : 'No cars in the selected range: ' + bLabels[selB];
+    var locMap = {}, locOrder = [];
+    rows.forEach(function (r) {
+      var k = r.loc.split(',')[0];
+      if (!locMap[k]) { locMap[k] = { n: 0, v: 0 }; locOrder.push(k); }
+      locMap[k].n += 1; locMap[k].v += r.cost;
+    });
+    var locMax = 0;
+    locOrder.forEach(function (k) { if (locMap[k].v > locMax) locMax = locMap[k].v; });
+    locOrder.sort(function (a, b) { return locMap[b].v - locMap[a].v; });
+    var locs = locOrder.map(function (k) {
+      return { label: k, count: locMap[k].n + (locMap[k].n === 1 ? ' car' : ' cars'), valF: money(locMap[k].v), pct: Math.max(2, Math.round(locMap[k].v / (locMax || 1) * 100)) + '%' };
+    });
+    var hist = [
+      { m: 'April', s: 'Apr', bought: 6, sold: 5, revenue: 118400, profit: 16900 },
+      { m: 'May', s: 'May', bought: 8, sold: 7, revenue: 152300, profit: 22100 },
+      { m: 'June', s: 'Jun', bought: 7, sold: 9, revenue: 201700, profit: 30400 },
+      { m: 'July', s: 'Jul', bought: 6, sold: 7, revenue: 158600, profit: 23800 },
+      { m: 'August', s: 'Aug', bought: 5, sold: 8, revenue: 164900, profit: 24300 },
+      { m: 'September', s: 'Sep', bought: 7, sold: 6, revenue: 131200, profit: 19850 }
+    ];
+    var metric = st.metric || 'sold';
+    var range = st.range || 6;
+    var shown = hist.slice(hist.length - range);
+    var selM = st.month || 'Sep';
+    if (!shown.filter(function (h) { return h.s === selM; }).length) selM = 'Sep';
+    var isMoney = metric === 'revenue' || metric === 'profit';
+    var hMax = 0;
+    shown.forEach(function (h) { if (h[metric] > hMax) hMax = h[metric]; });
+    var bars = shown.map(function (h) {
+      var on = h.s === selM;
+      return { month: h.s, valF: isMoney ? '$' + Math.round(h[metric] / 1000) + 'k' : String(h[metric]),
+        h: Math.max(4, Math.round(h[metric] / hMax * 160)) + 'px', color: on ? '#3D62A8' : '#1F1F1F', weight: on ? '600' : '400',
+        pick: function () { self.setState({ month: h.s }); } };
+    });
+    var cur = hist.filter(function (h) { return h.s === selM; })[0];
+    var monthDetail = cur.m + ': bought ' + cur.bought + ' cars, sold ' + cur.sold + ', revenue ' + money(cur.revenue) + ', gross profit ' + money(cur.profit) + '.';
+    var tog = function (on) { return { bg: on ? '#1F1F1F' : '#FFFFFF', fg: on ? '#FFFFFF' : '#1A1A1A' }; };
+    var metricBtns = [['sold', 'Cars sold'], ['bought', 'Cars bought'], ['revenue', 'Revenue'], ['profit', 'Gross profit']].map(function (x) {
+      return Object.assign({ label: x[1], pick: function () { self.setState({ metric: x[0] }); } }, tog(metric === x[0]));
+    });
+    var rangeBtns = [[3, '3 months'], [6, '6 months']].map(function (x) {
+      return Object.assign({ label: x[1], pick: function () { self.setState({ range: x[0] }); } }, tog(range === x[0]));
+    });
+    var go = function (s) { return function () { self.setState({ screen: s, q: '', kf: null }); }; };
+    var auth = st.auth || 'login';
+    var readMap = st.read || { n7: true };
+    var nDefs = [
+      ['n1', 'Aging', 'bad', '2015 Dodge Grand Caravan has not been collected for 742 days.', 'Today, 8:00 AM', open('caravan')],
+      ['n2', 'Pricing', 'warn', 'AI pricing agent suggests dropping the 2019 BMW X3 to $22,250.', 'Today, 7:30 AM', open('x3')],
+      ['n3', 'Payment', 'warn', 'Cheque to Manheim Toronto for $34,700 is due on Oct 6.', 'Today, 7:00 AM', go('pay')],
+      ['n4', 'Financing', 'warn', 'Bank approval for Customer A has been pending for 5 days.', 'Yesterday', go('fin')],
+      ['n5', 'Lead', 'bad', 'Call back to Customer E is overdue since Oct 1.', 'Yesterday', go('crm')],
+      ['n6', 'Marketing', 'info', 'Thanksgiving weekend event is scheduled to send on Oct 9.', 'Oct 2', go('mkt')],
+      ['n7', 'Security', 'ok', 'New sign-in confirmed with two-step verification.', 'Today, 9:12 AM', go('admin')]
+    ];
+    var unreadN = nDefs.filter(function (d) { return !readMap[d[0]]; }).length;
+    var nfilter = st.nfilter || 'all';
+    var notifs = nDefs.filter(function (d) { return nfilter === 'all' || !readMap[d[0]]; }).map(function (d) {
+      var unread = !readMap[d[0]];
+      return { cat: d[1], bg: kinds[d[2]][0], fg: kinds[d[2]][1], bar: unread ? '#3D62A8' : '#DCDCDA', text: d[3], time: d[4],
+        state: unread ? 'Unread' : 'Read', weight: unread ? '600' : '400', unread: unread, view: d[5],
+        mark: function () { var m = Object.assign({}, readMap); m[d[0]] = true; self.setState({ read: m }); } };
+    });
+    var notifTabs = [['all', 'All'], ['unread', 'Unread']].map(function (x) {
+      var on = nfilter === x[0];
+      return { label: x[1], bg: on ? '#1F1F1F' : '#FFFFFF', fg: on ? '#FFFFFF' : '#1A1A1A', pick: function () { self.setState({ nfilter: x[0] }); } };
+    });
+    var markAll = function () { var m = {}; nDefs.forEach(function (d) { m[d[0]] = true; }); self.setState({ read: m }); };
+    var navDefs = [['dash', 'Dashboard'], ['inv', 'Inventory'], ['loc', 'Location management'], ['purch', 'Purchasing'], ['recon', 'Reconditioning'], ['car', 'Car card and pricing'], ['market', 'Market check'], ['sales', 'Sales and deals'], ['crm', 'Customers'], ['fin', 'Financing'], ['pay', 'Payments'], ['mkt', 'Marketing campaigns'], ['tasks', 'Tasks and alerts'], ['chat', 'Reports assistant'], ['feed', 'Feed'], ['mail', 'Internal mail'], ['tchat', 'Team chat'], ['users', 'User management'], ['roles', 'Roles and permissions'], ['wf', 'Workflows'], ['audit', 'Audit log'], ['admin', 'Integrations']];
+    var locList = st.locs || [
+      { id: 'l1', name: 'Main lot', type: 'Dealership lot', address: '1882 Lawrence Ave E, Scarborough', capacity: '40', x: 80, y: 40 },
+      { id: 'l2', name: 'Overflow lot', type: 'Storage lot', address: '[Address to confirm]', capacity: '15', x: 90, y: 18 },
+      { id: 'l3', name: 'Auction yard', type: 'ADESA Toronto', address: 'Brampton, ON', capacity: '', x: 24, y: 26 },
+      { id: 'l4', name: 'Carrier trailer', type: 'Transport carrier yard', address: '[Address to confirm]', capacity: '', x: 52, y: 22 },
+      { id: 'l5', name: 'In transit', type: 'On the road', address: 'No fixed address', capacity: '', x: 46, y: 50 }
+    ];
+    var locKey = function (r) { return r.loc.split(',')[0]; };
+    var selLoc = st.selLoc || 'Main lot';
+    var locViews = locList.map(function (l) {
+      var cs = rows.filter(function (r) { return locKey(r) === l.name; });
+      var cap = 0; cs.forEach(function (r) { cap += r.cost; });
+      var on = selLoc === l.name;
+      return Object.assign({}, l, { count: cs.length, capF: money(cap), left: l.x + '%', top: l.y + '%', size: (44 + Math.min(cs.length, 8) * 4) + 'px',
+        aria: l.name + ', ' + cs.length + (cs.length === 1 ? ' car' : ' cars'), pinBg: on ? '#3D62A8' : '#151515', rowBg: on ? '#F5F5F4' : '#FFFFFF', capacityF: l.capacity ? l.capacity + ' cars' : 'Not set',
+        pick: function () { self.setState({ selLoc: l.name }); },
+        edit: function () { setForm({ scope: 'loc', id: l.id, vals: { name: l.name, type: l.type, address: l.address, capacity: l.capacity } }); },
+        del: function () { self.setState({ confirm: { scope: 'loc', id: l.id, label: l.name } }); } });
+    });
+    var knownLoc = {}; locList.forEach(function (l) { knownLoc[l.name] = true; });
+    var unassigned = rows.filter(function (r) { return !knownLoc[locKey(r)]; }).length;
+    var selCars = rows.filter(function (r) { return locKey(r) === selLoc; });
+    var addLoc = function () { setForm({ scope: 'loc', id: null, vals: { name: '', type: '', address: '', capacity: '' } }); };
+    var st3 = function (id, title, who, detail) { return { id: id, title: title, who: who, detail: detail }; };
+    var wfList = st.wfs || [
+      { id: 'w1', name: 'Payment process', trigger: 'a payment to an auction, lender or supplier is needed', steps: [
+        st3('a1', 'Enter payment request', 'Bookkeeper', 'Amount, payee, due date and the car or invoice it relates to.'),
+        st3('a2', 'Approve payment', 'Owner', 'Owner reviews and approves or sends back with a note.'),
+        st3('a3', 'Issue cheque or transfer', 'Bookkeeper', 'Cheque number or transfer reference is recorded.'),
+        st3('a4', 'Reconcile', 'Bookkeeper', 'Payment is matched to the bank statement and closed.')] },
+      { id: 'w2', name: 'Cheque collection', trigger: 'a customer cheque is received', steps: [
+        st3('b1', 'Record cheque', 'Sales staff', 'Customer, amount, cheque date and the deal it belongs to.'),
+        st3('b2', 'Schedule deposit', 'Bookkeeper', 'A reminder is set for the date on the cheque.'),
+        st3('b3', 'Deposit cheque', 'Bookkeeper', 'Deposit is recorded on the day.'),
+        st3('b4', 'Confirm cleared or returned', 'Bookkeeper', 'A returned cheque alerts the owner and reopens the balance.')] },
+      { id: 'w3', name: 'Car exit permit', trigger: 'a car is about to leave any location', steps: [
+        st3('c1', 'Request exit permit', 'Sales staff', 'Car, reason for leaving and who is taking it.'),
+        st3('c2', 'Check payment', 'System', 'Confirms the car is paid in full or the lender has funded.'),
+        st3('c3', 'Approve permit', 'Owner or sales manager', 'Approval is recorded with name and time.'),
+        st3('c4', 'Release car', 'Lot attendant', 'Attendant checks the permit before handing over the keys.'),
+        st3('c5', 'Update inventory', 'System', 'Location and stock status are updated automatically.')] }
+    ];
+    var wfCur = wfList.filter(function (w) { return w.id === st.selWf; })[0] || wfList[0] || { id: '', name: '', trigger: '', steps: [] };
+    var wfViews = wfList.map(function (w) {
+      var on = w.id === wfCur.id;
+      return { name: w.name, trigger: w.trigger, stepLabel: w.steps.length + (w.steps.length === 1 ? ' step' : ' steps'), border: on ? '#1F1F1F' : '#DCDCDA', bg: on ? '#F5F5F4' : '#FFFFFF',
+        pick: function () { self.setState({ selWf: w.id }); },
+        edit: function () { setForm({ scope: 'wf', id: w.id, vals: { name: w.name, trigger: w.trigger } }); },
+        del: function () { self.setState({ confirm: { scope: 'wf', id: w.id, label: w.name } }); } };
+    });
+    var moveStep = function (i, dir) { return function () {
+      var j = i + dir; if (j < 0 || j >= wfCur.steps.length) return;
+      var arr = wfCur.steps.slice(); var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+      act({ wfs: wfList.map(function (w) { return w.id === wfCur.id ? Object.assign({}, w, { steps: arr }) : w; }), toast: 'Workflow step moved.' }, 'Workflows', tmp.title);
+    }; };
+    var stepViews = wfCur.steps.map(function (x, i) {
+      return { num: String(i + 1), title: x.title, who: x.who, detail: x.detail, up: moveStep(i, -1), down: moveStep(i, 1),
+        edit: function () { setForm({ scope: 'step', wfId: wfCur.id, id: x.id, vals: { title: x.title, who: x.who, detail: x.detail } }); },
+        del: function () { self.setState({ confirm: { scope: 'step', wfId: wfCur.id, id: x.id, label: x.title } }); } };
+    });
+    var auditRows = auditList.filter(function (a) { return !q || [a.time, a.user, a.action, a.module, a.target].join(' ').toLowerCase().indexOf(q) !== -1; });
+    var nowT = function () { return new Date().toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+    var mailList = st.mails || [
+      { id: 'm1', folder: 'inbox', from: '[Bookkeeper name]', to: 'Owner', subject: 'Cheque for the GLC 300 is ready for approval', body: 'The cheque to Manheim Toronto for $34,700 is prepared and is due on Tuesday.\nPlease approve it in Payments so I can issue it.', time: 'Today, 8:15 AM', read: false },
+      { id: 'm2', folder: 'inbox', from: '[Sales manager name]', to: 'Owner', subject: 'Highlander deal: bank still pending', body: 'Customer A is still waiting on approval from [Lender 1].\nI will call the bank again this morning and update the deal.', time: 'Today, 7:50 AM', read: false },
+      { id: 'm3', folder: 'inbox', from: '[Lot attendant name]', to: 'Owner', subject: 'Grand Caravan is still at the carrier yard', body: 'The carrier confirmed the Grand Caravan is still on their trailer and can be released any weekday.\nWho should collect it?', time: 'Yesterday', read: true },
+      { id: 'm4', folder: 'inbox', from: '[Sales staff name]', to: 'Owner', subject: 'Test drive booked for the Civic', body: 'Customer B is booked for a test drive of the 2019 Honda Civic LX on Oct 6.', time: 'Oct 3', read: true },
+      { id: 'm5', folder: 'sent', from: 'Owner', to: '[Sales manager name]', subject: 'Price drop on the BMW X3', body: 'Please update the X3 to $22,250 on the website today, as the pricing agent suggests.', time: 'Oct 3', read: true }
+    ];
+    var mailFolder = st.mailFolder || 'inbox';
+    var inFolder = mailList.filter(function (x) { return x.folder === mailFolder; });
+    var mailCur = inFolder.filter(function (x) { return x.id === st.selMail; })[0] || null;
+    var mailRows = inFolder.map(function (x) {
+      var on = mailCur && mailCur.id === x.id;
+      return { party: mailFolder === 'inbox' ? 'From ' + x.from : 'To ' + x.to, time: x.time, subject: x.subject, weight: x.read ? '400' : '700', state: x.read ? 'Read' : 'Unread',
+        border: on ? '#1F1F1F' : '#FFFFFF', bg: on ? '#F5F5F4' : '#FFFFFF',
+        pick: function () { self.setState({ selMail: x.id, mails: mailList.map(function (y) { return y.id === x.id ? Object.assign({}, y, { read: true }) : y; }) }); } };
+    });
+    var unreadMail = mailList.filter(function (x) { return x.folder === 'inbox' && !x.read; }).length;
+    var mailTabs = [['inbox', 'Inbox · ' + unreadMail + ' unread'], ['sent', 'Sent']].map(function (x) {
+      var on = mailFolder === x[0];
+      return { label: x[1], bg: on ? '#1F1F1F' : '#FFFFFF', fg: on ? '#FFFFFF' : '#1A1A1A', pick: function () { self.setState({ mailFolder: x[0], selMail: null }); } };
+    });
+    var chans = [['general', 'General', 'Channel'], ['sales', 'Sales floor', 'Channel'], ['accounts', 'Accounts', 'Channel'], ['lot', 'Lot and logistics', 'Channel'], ['dm1', '[Sales manager name]', 'Direct message'], ['dm2', '[Bookkeeper name]', 'Direct message']];
+    var chatData = st.chats || {
+      general: [{ who: '[Sales manager name]', text: 'Morning all. Two test drives booked this week.', time: 'Today, 8:02 AM' }, { who: '[Bookkeeper name]', text: 'Reminder: floor plan interest goes out Friday.', time: 'Today, 8:10 AM' }],
+      sales: [{ who: '[Sales staff name]', text: 'Customer C wants a trade-in value on the RDX deal. Can someone appraise today?', time: 'Today, 8:31 AM' }, { who: '[Sales manager name]', text: 'I will take it after lunch.', time: 'Today, 8:35 AM' }],
+      accounts: [{ who: '[Bookkeeper name]', text: 'Post-dated cheque for $8,500 goes to the bank on Wednesday.', time: 'Yesterday' }],
+      lot: [{ who: '[Lot attendant name]', text: 'C 300 is ready for pickup at the auction yard. Need a driver.', time: 'Today, 7:45 AM' }],
+      dm1: [{ who: '[Sales manager name]', text: 'Can we talk about the X3 price before noon?', time: 'Today, 8:20 AM' }],
+      dm2: []
+    };
+    var selChan = st.selChan || 'general';
+    var chanViews = chans.map(function (c) {
+      var n = (chatData[c[0]] || []).length, on = selChan === c[0];
+      return { name: c[1], kind: c[2], countLabel: n + (n === 1 ? ' message' : ' messages'), border: on ? '#1F1F1F' : '#FFFFFF', bg: on ? '#F5F5F4' : '#FFFFFF', pick: function () { self.setState({ selChan: c[0], draft: '' }); } };
+    });
+    var chanName = chans.filter(function (c) { return c[0] === selChan; })[0][1];
+    var msgViews = (chatData[selChan] || []).map(function (g) {
+      var mine = g.who === 'Owner';
+      return { who: mine ? 'You' : g.who, time: g.time, text: g.text, align: mine ? 'flex-end' : 'flex-start', bg: mine ? '#1F1F1F' : '#FFFFFF', fg: mine ? '#FFFFFF' : '#151515' };
+    });
+    var sendMsg = function () {
+      var text = String(st.draft || '').trim(); if (!text) return;
+      var cd = Object.assign({}, chatData); cd[selChan] = (chatData[selChan] || []).concat([{ who: 'Owner', text: text, time: nowT() }]);
+      self.setState({ chats: cd, draft: '' });
+    };
+    var feedCars = [
+      { id: 'fa1', car: '2021 Lexus NX 300 AWD', km: 64000, auction: 'Manheim Toronto', sale: 'Oct 6', buy: 29500, resale: 35900, match: 'High', why: 'Similar SUVs on your lot sold in under 30 days.', time: 'Today, 6:05 AM' },
+      { id: 'fa2', car: '2022 Toyota RAV4 XLE AWD', km: 48000, auction: 'OPENLANE Canada', sale: 'Oct 8', buy: 30200, resale: 35500, match: 'High', why: 'Strong demand and you have none in stock.', time: 'Today, 6:05 AM' },
+      { id: 'fa3', car: '2020 BMW 330i xDrive', km: 71000, auction: 'OPENLANE Canada', sale: 'Oct 7', buy: 24800, resale: 29900, match: 'Medium', why: 'Good margin, but sedans take longer to sell for you.', time: 'Today, 6:05 AM' },
+      { id: 'fa4', car: '2019 Audi Q5 Progressiv', km: 98000, auction: 'Manheim Toronto', sale: 'Oct 6', buy: 21500, resale: 25400, match: 'Low', why: 'You already have a Q5 that has been in stock for 96 days.', time: 'Today, 6:05 AM' }
+    ];
+    var feedGone = st.feedGone || {};
+    var feedWatch = st.feedWatch || {};
+    var dismissPost = function (id) { return function () { var g = Object.assign({}, feedGone); g[id] = true; self.setState({ feedGone: g }); }; };
+    var watchCar = function (fc, bidText) {
+      var d = Object.assign({}, data);
+      d.purch = [{ id: 'purch' + Date.now(), c1: fc.car, sub: 'Watchlist, from the feed', c2: fc.auction, c3: 'Sale on ' + fc.sale, c4: bidText || 'No max bid', pill: 'Watching', kind: 'info' }].concat(modList('purch'));
+      var w = Object.assign({}, feedWatch); w[fc.id] = bidText ? 'On your watchlist. ' + bidText + '.' : 'On your watchlist in Purchasing.';
+      act({ data: d, feedWatch: w, form: null, toast: bidText ? 'Max bid saved and car added to watchlist.' : 'Car added to watchlist.' }, 'Feed', fc.car);
+    };
+    var allPosts = feedCars.map(function (fc) {
+      var margin = fc.resale - fc.buy - 1900;
+      return { id: fc.id, type: 'auction', tag: 'Auction car', kind: 'info', time: fc.time, source: 'from an alert email, ' + fc.auction, title: fc.car,
+        text: fc.km.toLocaleString('en-CA') + ' km. Sale on ' + fc.sale + '. ' + fc.why, isAuction: true,
+        stats: [{ label: 'Likely auction price', value: money(fc.buy) }, { label: 'Likely resale price', value: money(fc.resale) }, { label: 'Margin after about $1,900 costs', value: money(margin) }, { label: 'Fit for your lot', value: fc.match }],
+        isWatched: !!feedWatch[fc.id], watchLabel: feedWatch[fc.id] || '', canWatch: !feedWatch[fc.id],
+        watch: function () { watchCar(fc, ''); }, bid: function () { setForm({ scope: 'bid', postId: fc.id, vals: { bid: String(fc.buy) } }); },
+        hasView: !!feedWatch[fc.id], view: go('purch'), viewLabel: 'Open Purchasing' };
+    });
+    var internal = function (id, tag, kind, time, title, text, view, viewLabel) {
+      return { id: id, type: 'internal', tag: tag, kind: kind, time: time, source: 'from this system', title: title, text: text, isAuction: false, stats: [],
+        isWatched: false, watchLabel: '', canWatch: false, watch: noop, bid: noop, hasView: true, view: view, viewLabel: viewLabel };
+    };
+    over.forEach(function (r) {
+      allPosts.push(internal('age-' + r.id, 'Aging', 'bad', 'Today, 8:00 AM', r.name + ' has been in stock for ' + r.days + ' days', 'It is at ' + r.loc + ' with ' + r.costF + ' tied up.', r.open, 'Open car card'));
+    });
+    allPosts.push(internal('fi1', 'Pricing', 'warn', 'Today, 7:30 AM', 'Price suggestion for the 2019 BMW X3', 'Similar cars are listed about 10% lower. Suggested new price: $22,250.', open('x3'), 'Open car card'));
+    allPosts.push(internal('fi2', 'Payment', 'warn', 'Today, 7:00 AM', 'Cheque to Manheim Toronto is due on Oct 6', '$34,700 for the 2022 Mercedes-Benz GLC 300 Coupe.', go('pay'), 'Open Payments'));
+    allPosts.push(internal('fi3', 'Lead', 'bad', 'Yesterday', 'Follow-up with Customer E is overdue', 'Financing lead for the 2020 Lexus RX 350, last contacted on Sep 30.', go('crm'), 'Open Customers'));
+    allPosts.push(internal('fi4', 'Arrival', 'ok', 'Oct 1', '2022 Mercedes-Benz GLC 300 Coupe is in transit', 'Picked up from Manheim Toronto and on its way to the main lot.', go('purch'), 'Open Purchasing'));
+    var feedFilter = st.feedFilter || 'all';
+    var liveFeed = allPosts.filter(function (f) { return !feedGone[f.id]; });
+    var feedPosts = liveFeed.filter(function (f) { return feedFilter === 'all' || f.type === feedFilter; }).map(function (f) {
+      return Object.assign({}, f, { tagBg: kinds[f.kind][0], tagFg: kinds[f.kind][1], dismiss: dismissPost(f.id) });
+    });
+    var feedTabs = [['all', 'All'], ['auction', 'Auction cars'], ['internal', 'Internal']].map(function (x) {
+      var on = feedFilter === x[0];
+      var n = x[0] === 'all' ? liveFeed.length : liveFeed.filter(function (f) { return f.type === x[0]; }).length;
+      return { label: x[1] + ' · ' + n, bg: on ? '#1F1F1F' : '#FFFFFF', fg: on ? '#FFFFFF' : '#1A1A1A', pick: function () { self.setState({ feedFilter: x[0] }); } };
+    });
+    var featDefs = [['nav', 'Navigation', 600], ['pano', 'Panoramic roof', 900], ['heated', 'Heated seats', 300], ['leather', 'Leather seats', 700], ['carplay', 'Apple CarPlay', 200], ['premium', 'Premium or M Sport package', 1200], ['accident', 'Accident-free', 1200], ['owner', 'One owner', 300], ['winter', 'Winter tires included', 400]];
+    var mkDefault = { year: '2019', make: 'BMW', model: 'X3', trim: 'xDrive30i', km: '98000', drive: 'AWD', colour: 'Black', ask: '24900', cost: '20600', feats: { heated: true, carplay: true, pano: true, accident: true } };
+    var mk = st.mk || mkDefault;
+    var mkSet = function (patch) { self.setState({ mk: Object.assign({}, mk, patch) }); };
+    var mkFields = [['year', 'Year'], ['make', 'Make'], ['model', 'Model'], ['trim', 'Trim'], ['km', 'Odometer, km'], ['colour', 'Exterior colour'], ['ask', 'Your asking price'], ['cost', 'Your total cost']].map(function (f) {
+      return { label: f[1], value: mk[f[0]] == null ? '' : mk[f[0]], change: function (e) { var p = {}; p[f[0]] = e.target.value; mkSet(p); } };
+    });
+    var mkDrive = ['AWD', 'FWD', 'RWD'].map(function (d) {
+      var on = mk.drive === d;
+      return { label: d, bg: on ? '#1F1F1F' : '#FFFFFF', fg: on ? '#FFFFFF' : '#1A1A1A', pick: function () { mkSet({ drive: d }); } };
+    });
+    var mkFeat = featDefs.map(function (f) {
+      var on = !!(mk.feats || {})[f[0]];
+      return { label: f[1], on: on, bg: on ? '#1F1F1F' : '#FFFFFF', fg: on ? '#FFFFFF' : '#1A1A1A', pick: function () { var fe = Object.assign({}, mk.feats || {}); fe[f[0]] = !on; mkSet({ feats: fe }); } };
+    });
+    var numOf = function (v) { var n = parseInt(String(v == null ? '' : v).replace(/[^0-9]/g, ''), 10); return isNaN(n) ? 0 : n; };
+    var realX3 = [
+      ['CarGurus.ca', 2019, 'xDrive30i AWD', 21888, 113000, 'North York, 15 km', {}, false],
+      ['CarGurus.ca', 2019, 'xDrive30i AWD', 20995, 94206, 'North York, 15 km', {}, false],
+      ['CarGurus.ca', 2019, 'xDrive30i AWD', 22222, 85208, 'Oakville, 27 km', {}, true],
+      ['CarGurus.ca', 2019, 'xDrive30i AWD', 21770, 103000, 'North York, 16 km', {}, false],
+      ['CarGurus.ca', 2019, 'xDrive30i AWD', 18595, 141404, 'Guelph, 72 km', {}, false],
+      ['CarGurus.ca', 2019, 'xDrive30i AWD', 22499, 102803, 'Burlington, 44 km', {}, true],
+      ['CarGurus.ca', 2019, 'xDrive30i AWD', 24900, 76000, 'North York, 14 km', {}, false],
+      ['CarGurus.ca', 2019, 'xDrive30i AWD', 18888, 141773, 'North York, 15 km', {}, false],
+      ['Carpages.ca', 2019, 'xDrive30i', 28990, 18018, 'Toronto', { carplay: true, heated: true }, false],
+      ['Carpages.ca', 2019, 'xDrive30i', 27890, 75600, 'Toronto', {}, false],
+      ['Carpages.ca', 2019, 'xDrive30i M Sport package', 26985, 119954, 'North York', { carplay: true, pano: true, premium: true }, false],
+      ['Carpages.ca', 2019, 'xDrive30i AWD', 22490, 139300, 'Toronto', { carplay: true, heated: true }, false],
+      ['Carpages.ca', 2019, 'xDrive30i Sport package', 20750, 129352, 'North York', { leather: true, pano: true, nav: true }, false],
+      ['Carpages.ca', 2019, 'M40i', 37590, 86500, 'Toronto', { carplay: true, nav: true, pano: true }, false],
+      ['Carpages.ca', 2019, 'xDrive30i', 21590, 97061, 'Toronto', { carplay: true, heated: true }, false],
+      ['Carpages.ca', 2019, 'xDrive30i AWD', 24690, 93210, 'Toronto', { carplay: true, heated: true }, false],
+      ['Carpages.ca', 2019, 'xDrive30i', 20790, 131891, 'Toronto', { carplay: true, heated: true }, false]
+    ];
+    var run = st.mkRun || null;
+    var mkOut = { sourceNote: '', noteBg: '#E3E8F4', noteFg: '#1F3F74', bars: [], comps: [], adv: [], noAdv: true };
+    if (run) {
+      var myYear = numOf(run.year) || 2019, myKm = numOf(run.km), ask = numOf(run.ask), cost = numOf(run.cost), myF = run.feats || {};
+      var isX3 = /bmw/i.test(run.make || '') && /x3/i.test(run.model || '') && myYear >= 2018 && myYear <= 2020;
+      var src;
+      if (isX3) {
+        src = realX3;
+        mkOut.sourceNote = 'Real listings: 17 comparables found on CarGurus.ca and Carpages.ca within about 70 km of Scarborough, as of October 14, 2026. The product would refresh this daily.';
+      } else {
+        var base = ask || 25000, kmB = myKm || 90000;
+        src = [[0.88, 1.28, 'Mississauga, 30 km'], [0.93, 1.14, 'North York, 15 km'], [0.96, 1.06, 'Scarborough, 4 km'], [0.98, 1.0, 'Markham, 18 km'], [1.01, 0.96, 'Toronto, 12 km'], [1.04, 0.9, 'Vaughan, 32 km'], [1.08, 0.82, 'Oakville, 45 km'], [1.14, 0.68, 'Brampton, 38 km']].map(function (x, i) {
+          return ['Sample market', myYear + (i === 1 ? -1 : (i === 6 ? 1 : 0)), (run.trim || 'Same trim'), Math.round(base * x[0] / 10) * 10, Math.round(kmB * x[1] / 100) * 100, x[2], {}, i === 3];
+        });
+        mkOut.sourceNote = 'Sample market: no live search for this car in the prototype, so these 8 comparables are illustrative and scaled from your asking price. Only the BMW X3 example uses real listings.';
+        mkOut.noteBg = '#FBE6C8'; mkOut.noteFg = '#6B3600';
+      }
+      var myTrimKey = (run.trim || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      var comps = src.map(function (c) {
+        var eq = c[3] + Math.round((c[4] - myKm) * 0.06) + (myYear - c[1]) * 1200, notes = [];
+        featDefs.forEach(function (f) {
+          var mine = !!myF[f[0]], theirs = c[6][f[0]];
+          if (mine && theirs === false) { eq += f[2]; }
+          if (!mine && theirs === true) { eq -= f[2]; notes.push('has ' + f[1].toLowerCase()); }
+        });
+        var excluded = isX3 && /m40i/i.test(c[2]) && !/m40i/.test(myTrimKey);
+        var featList = Object.keys(c[6]).map(function (k) { return featDefs.filter(function (f) { return f[0] === k; })[0][1]; });
+        return { source: c[0], year: c[1], trim: c[1] + ' ' + c[2], price: c[3], km: c[4], loc: c[5], feats: featList.length ? featList.join(', ') : 'Not stated', eq: eq, cut: c[7], excluded: excluded,
+          status: excluded ? 'Excluded, different trim' : (c[7] ? 'Included, seller cut the price recently' : (notes.length ? 'Included, ' + notes.join(', ') : 'Included')) };
+      });
+      var used = comps.filter(function (c) { return !c.excluded; }).sort(function (a, b) { return a.eq - b.eq; });
+      var eqs = used.map(function (c) { return c.eq; });
+      var median = eqs.length ? (eqs.length % 2 ? eqs[(eqs.length - 1) / 2] : Math.round((eqs[eqs.length / 2 - 1] + eqs[eqs.length / 2]) / 2)) : 0;
+      var lo = eqs.length ? eqs[0] : 0, hi = eqs.length ? eqs[eqs.length - 1] : 0;
+      var listAt = Math.round(median * 0.98 / 50) * 50, floor = Math.max(cost + 800, Math.round(median * 0.93 / 50) * 50), margin = listAt - cost;
+      var pct = median ? Math.round((ask - median) / median * 100) : 0;
+      var cuts = used.filter(function (c) { return c.cut; }).length;
+      var posLabel = !ask ? 'No asking price entered' : (pct > 2 ? pct + '% above the market median' : (pct < -2 ? Math.abs(pct) + '% below the market median' : 'In line with the market median'));
+      var reason;
+      if (!ask) reason = 'Enter your asking price to see where it sits against the market.';
+      else if (pct > 2) reason = 'Buyers compare prices online before they visit, and a car priced ' + pct + '% above the pack gets fewer enquiries, which is why it has aged. Listing at ' + money(listAt) + ' puts it just under the median of ' + used.length + ' comparable cars while keeping ' + money(margin) + ' of margin.' + (cuts ? ' ' + cuts + ' of the sellers cut their price recently, a sign the market is softening, so waiting is unlikely to help.' : '');
+      else if (pct < -2) reason = 'You are priced below the market. You could raise the price to ' + money(listAt) + ' and still sit under the median, adding ' + money(listAt - ask) + ' of margin.';
+      else reason = 'Your price is in line with the market. Listing at ' + money(listAt) + ' keeps you just under the median, and the advantages below are what will make a buyer choose your car over the others.';
+      var range = hi - lo || 1;
+      var barOf = function (label, v, color, weight) { return { label: label, priceF: money(v), w: Math.max(3, Math.round((v - lo) / range * 100)) + '%', color: color, weight: weight }; };
+      var bars = used.map(function (c) { return barOf(c.source + ', ' + c.km.toLocaleString('en-CA') + ' km', c.eq, '#BDBDBA', '400'); });
+      bars.push(barOf('Market median', median, '#151515', '600'));
+      if (ask) bars.push(barOf('Your asking price', ask, pct > 2 ? '#B4470E' : '#3D62A8', '600'));
+      bars.push(barOf('Recommended list price', listAt, '#3D62A8', '600'));
+      bars.sort(function (a, b) { return parseInt(a.w, 10) - parseInt(b.w, 10); });
+      var adv = featDefs.filter(function (f) { return myF[f[0]]; }).map(function (f) {
+        var n = used.filter(function (c) { return src.filter(function (s) { return s[0] === c.source && s[3] === c.price; })[0][6][f[0]] === true; }).length;
+        return n <= used.length / 2 ? { label: f[1], note: n ? 'only ' + n + ' of ' + used.length + ' comparables list it' : 'none of the comparables list it' } : null;
+      }).filter(function (x) { return x; });
+      Object.assign(mkOut, { medianF: money(median), rangeF: money(lo) + ' to ' + money(hi), askF: ask ? money(ask) : 'Not entered', posLabel: posLabel, posColor: pct > 2 ? '#8A2D00' : (pct < -2 ? '#1F3F74' : '#1A1A1A'),
+        usedN: String(used.length), usedNote: (comps.length - used.length) + ' excluded for a different trim', costF: cost ? money(cost) : 'Not entered', costNote: cost ? 'purchase, fees, transport, reconditioning' : 'enter it to see margin',
+        listF: money(listAt), floorF: money(floor), marginF: cost ? money(margin) : 'Enter cost', marginNote: cost ? (margin < 0 ? 'below your cost, the car was bought above market' : 'after all costs') : 'no cost entered', reason: reason,
+        bars: bars, comps: comps.map(function (c) { return Object.assign({}, c, { priceF: money(c.price), kmF: c.km.toLocaleString('en-CA'), eqF: c.excluded ? 'Excluded' : money(c.eq), color: c.excluded ? '#8A8A88' : '#151515' }); }),
+        adv: adv, noAdv: adv.length === 0 });
+    }
+    var carToMk = function (r) {
+      var parts = r.name.split(' ');
+      return { year: parts[0], make: parts[1] || '', model: parts[2] || '', trim: parts.slice(3).join(' '), km: String(r.km), drive: /awd|xdrive|4matic|quattro|sh-awd/i.test(r.name) ? 'AWD' : 'FWD', colour: '', ask: r.list == null ? '' : String(r.list), cost: String(r.cost), feats: r.id === 'x3' ? mkDefault.feats : {} };
+    };
+    var navGroups = [['Control Center', ['dash', 'feed', 'chat']], ['Communication', ['mail', 'tchat']], ['Inventory Management', ['inv', 'loc', 'purch', 'recon', 'car', 'market']], ['Sales Management', ['sales', 'crm']], ['Marketing Management', ['mkt']], ['Financial Management', ['fin', 'pay']], ['System Administration', ['users', 'roles', 'wf', 'audit', 'tasks', 'admin']]].map(function (g) {
+      return { title: g[0], items: g[1].map(function (k) {
+        var d = navDefs.filter(function (n) { return n[0] === k; })[0];
+        var on = screen === k;
+        return { label: d[1], go: go(k), bg: on ? '#F2F2F2' : '#262626', fg: on ? '#121212' : '#F2F2F2' };
+      }) };
+    });
+    var nav = navDefs.map(function (n) {
+      var on = screen === n[0];
+      return { label: n[1], go: go(n[0]), bg: on ? '#F2F2F2' : '#262626', fg: on ? '#121212' : '#F2F2F2' };
+    });
+    var overLines = over.map(function (r) { return r.name + ': ' + r.days + ' days, ' + r.loc + ', ' + r.costF; }).join('\n');
+    var qa = [
+      { text: 'How did September compare to August?', a: 'September: bought 7 cars, sold 6, revenue $131,200, gross profit $19,850.\nAugust: bought 5 cars, sold 8, revenue $164,900, gross profit $24,300.\nSales were down 2 cars and gross profit down $4,450, while purchases went up, so stock and tied-up capital grew.' },
+      { text: 'Which cars are over the aging limit?', a: over.length + ' cars are over ' + limit + ' days, with ' + money(overCapital) + ' tied up:\n' + overLines },
+      { text: 'What is due this week?', a: 'Tue Oct 6: cheque to auction for the Mercedes-Benz GLC 300, $34,700.\nWed Oct 7: deposit customer post-dated cheque, $8,500.\nFri Oct 9: floor plan lender interest, $1,240.\nAlso: bank financing approval for the Highlander buyer has been pending 5 days, $12,000 outstanding.' }
+    ];
+    var chat = st.chat || [];
+    var questions = qa.map(function (q) {
+      return { text: q.text, ask: function () { self.setState({ chat: chat.concat([{ q: q.text, a: q.a }]) }); } };
+    });
+    return {
+      isDash: screen === 'dash', isInv: screen === 'inv', isCar: screen === 'car', isChat: screen === 'chat', isMod: !!mods[screen], mod: mod, isMarket: screen === 'market', mkFields: mkFields, mkDrive: mkDrive, mkFeat: mkFeat, mkHasRun: !!run, mk: mkOut,
+      mkSearch: function () { self.setState({ mkRun: mk, audit: entry('Market check run', 'Market check', [mk.year, mk.make, mk.model, mk.trim].join(' ')) }); },
+      mkReset: function () { self.setState({ mk: mkDefault, mkRun: mkDefault }); },
+      carMarket: car.id ? function () { var v = carToMk(car); self.setState({ mk: v, mkRun: v, screen: 'market', q: '', kf: null }); } : noop, isFeed: screen === 'feed', feedPosts: feedPosts, feedTabs: feedTabs, feedEmpty: feedPosts.length === 0,
+      feedCountLabel: feedPosts.length + (feedPosts.length === 1 ? ' post' : ' posts'), isMail: screen === 'mail', isTchat: screen === 'tchat',
+      mailRows: mailRows, mailTabs: mailTabs, mailNone: mailRows.length === 0, mailHas: !!mailCur, mailNoSel: !mailCur, mailCur: mailCur || { subject: '', from: '', to: '', time: '', body: '' },
+      composeMail: function () { setForm({ scope: 'mail', id: null, vals: { to: '', subject: '', body: '' } }); },
+      replyMail: function () { if (mailCur) setForm({ scope: 'mail', id: null, vals: { to: mailCur.from === 'Owner' ? mailCur.to : mailCur.from, subject: 'Re: ' + mailCur.subject, body: '' } }); },
+      deleteMail: function () { if (mailCur) self.setState({ confirm: { scope: 'mail', id: mailCur.id, label: mailCur.subject } }); },
+      chanViews: chanViews, chanName: chanName, msgViews: msgViews, msgNone: msgViews.length === 0, draft: st.draft || '', sendMsg: sendMsg,
+      onDraft: function (e) { self.setState({ draft: e.target.value }); }, onDraftKey: function (e) { if (e.key === 'Enter') sendMsg(); }, isWf: screen === 'wf', isAudit: screen === 'audit', wfViews: wfViews, wfCur: wfCur, stepViews: stepViews,
+      wfNone: wfList.length === 0, wfHas: wfList.length > 0, stepsNone: wfCur.steps.length === 0,
+      addWf: function () { setForm({ scope: 'wf', id: null, vals: { name: '', trigger: '' } }); },
+      addStep: function () { setForm({ scope: 'step', wfId: wfCur.id, id: null, vals: { title: '', who: '', detail: '' } }); },
+      auditRows: auditRows, auditEmpty: auditRows.length === 0, auditCount: auditRows.length + ' of ' + auditList.length + ' entries shown', isLoc: screen === 'loc', locViews: locViews, selCars: selCars, selEmpty: selCars.length === 0, addLoc: addLoc,
+      selLocTitle: 'Cars at ' + selLoc + ': ' + selCars.length, hasUnassigned: unassigned > 0, unassignedNote: unassigned + (unassigned === 1 ? ' car is' : ' cars are') + ' at a place that is not in the location list. Edit the car or add the location.', navGroups: navGroups, invRows: invRows, invEmpty: invRows.length === 0, addCar: addCar,
+      carEdit: car.id ? editCar(car) : noop, carDel: car.id ? delCar(car) : noop,
+      searchVal: st.q || '', onSearch: function (e) { self.setState({ q: e.target.value }); },
+      toast: st.toast || '', hasToast: !!st.toast, clearToast: function () { self.setState({ toast: '' }); },
+      formView: formView, saveForm: saveForm, cancelForm: function () { self.setState({ form: null }); },
+      confirmView: confirmView, doDelete: doDelete, cancelConfirm: function () { self.setState({ confirm: null }); }, isLogin: auth === 'login', isMfa: auth === 'mfa', isIn: auth === 'in',
+      signIn: function () { self.setState({ auth: 'mfa' }); }, verify: function () { self.setState({ auth: 'in', screen: 'dash', audit: entry('Signed in with two-step verification', 'Security', 'Owner account') }); },
+      backToLogin: function () { self.setState({ auth: 'login' }); }, logout: function () { self.setState({ auth: 'login', screen: 'dash', audit: entry('Signed out', 'Security', 'Owner account') }); },
+      isNotif: screen === 'notif', goNotif: go('notif'), notifs: notifs, notifTabs: notifTabs, markAll: markAll, notifEmpty: notifs.length === 0,
+      unreadLabel: unreadN + ' unread of ' + nDefs.length + ' notifications', notifBtnLabel: 'Notifications · ' + unreadN + ' unread',
+      notifBg: screen === 'notif' ? '#F2F2F2' : '#121212', notifFg: screen === 'notif' ? '#121212' : '#F2F2F2', bars: bars, monthDetail: monthDetail, metricBtns: metricBtns, rangeBtns: rangeBtns, locs: locs, bucketCars: bucketCars, bucketTitle: bucketTitle,
+      nav: nav, rows: rows, count: rows.length, capital: money(capital), overCount: overCount, overCapital: money(overCapital),
+      buckets: buckets, alerts: alerts, car: car, steps: steps, comps: comps,
+      goInv: go('inv'), goChat: go('chat'), questions: questions, chat: chat, chatEmpty: chat.length === 0
+    };
+  }
+}
+
+window.__start(Component, {"agingLimit": 90});
+</script>
+</body>
+</html>

@@ -37,7 +37,7 @@ async function fetchListings(car, opts) {
 
 async function check(car, opts) {
   const data = await fetchListings(car, opts);
-  const analysis = pricing.analyze(car, data.listings);
+  const analysis = pricing.analyze(car, data.listings, (opts || {}).mode);
   return Object.assign({ car, source: data.source, sourceLabel: data.sourceLabel, cached: data.cached, fetchedAt: data.fetchedAt, error: data.error || null, liveAvailable: liveAvailable() }, analysis);
 }
 

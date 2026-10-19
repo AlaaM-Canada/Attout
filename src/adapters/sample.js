@@ -25,7 +25,7 @@ const X3 = [
 
 function x3Listings() {
   return X3.map((r, i) => ({
-    id: `x3-${i}`, source: r[0], url: r[9], title: `${r[1]} BMW X3 ${r[2]}`, year: r[1], make: 'BMW', model: 'X3', trim: r[2],
+    id: `x3-${i}`, source: r[0], url: r[9], title: `${r[1]} BMW X3 ${r[2]}`, year: r[1], make: 'BMW', model: 'X3', trim: r[2], body: 'SUV',
     headline: '', price: r[3], km: r[4], transmission: 'Automatic', drivetrain: 'AWD', fuel: 'Gas', colour: '',
     seller: r[0] === 'Carpages.ca' ? 'Dealer' : '', sellerType: 'dealer', city: r[5], distanceKm: r[6], image: null,
     dealRating: '', marketValue: null, daysOnMarket: null, priceDrop: r[8], listedAt: null, vin: null, knownFeatures: r[7]
@@ -42,7 +42,7 @@ function generated(car) {
   ];
   return rows.map((r, i) => ({
     id: `gen-${i}`, source: r[4], url: null, title: `${car.year + (i === 1 ? -1 : (i === 6 ? 1 : 0))} ${car.make} ${car.model} ${car.trim || ''}`.trim(),
-    year: car.year + (i === 1 ? -1 : (i === 6 ? 1 : 0)), make: car.make, model: car.model, trim: car.trim || '', headline: 'Sample listing',
+    year: car.year + (i === 1 ? -1 : (i === 6 ? 1 : 0)), make: car.make, model: car.model, trim: i % 4 === 2 ? '' : (car.trim || ''), body: '', headline: 'Sample listing',
     price: Math.round(base * r[0] / 10) * 10, km: Math.round(km * r[1] / 100) * 100, transmission: 'Automatic', drivetrain: car.drivetrain || '',
     fuel: 'Gas', colour: '', seller: i % 3 === 1 ? 'Private seller' : 'Dealer', sellerType: i % 3 === 1 ? 'private' : 'dealer',
     city: r[2], distanceKm: r[3], image: null, dealRating: '', marketValue: null, daysOnMarket: 10 + i * 7, priceDrop: i === 3, listedAt: null, vin: null, knownFeatures: {}
