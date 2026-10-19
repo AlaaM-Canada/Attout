@@ -136,9 +136,11 @@
     const canAct = !!car.id;
     const verdictTitle = { raise: 'Room to raise the price', lower: 'Lower the price to move it', keep: 'Keep the price', none: 'No recommendation yet' }[rec.verdict];
     const actionLabel = { raise: `Raise to ${money(rec.listAt)}`, lower: `Lower to ${money(rec.listAt)}`, keep: `Keep ${money(s.askingPrice)}`, none: '' }[rec.verdict];
+    const ownPrice = r.own.length ? Math.min.apply(null, r.own.map((o) => o.price)) : 0;
     const ownStrip = r.own.length ? `<section class="own">
         <div class="row between"><div><strong>Your listing on the market</strong><span class="sub"> · ${r.own.length} platform${r.own.length > 1 ? 's' : ''}${rec.listedFor != null ? ` · listed ${rec.listedFor} days` : ''}${s.rank ? ` · ranks ${s.rank} of ${s.used + 1} on price` : ''}</span></div></div>
         <div class="own-row">${r.own.map((o) => `<div class="own-item"><span class="pill ${srcClass(o.source)}">${esc(o.source)}</span><span class="mono" style="font-weight: 600">${money(o.price)}</span>${o.dealRating ? `<span class="pill green">${esc(o.dealRating)}</span>` : ''}${o.daysOnMarket != null ? `<span class="sub">${o.daysOnMarket} days</span>` : ''}${o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">Open</a>` : ''}</div>`).join('')}</div>
+        ${canAct && ownPrice && ownPrice !== car.listPrice ? `<div class="row" style="gap: 10px"><span class="sub">The listing says ${money(ownPrice)} but the inventory says ${money(car.listPrice)}.</span><button class="btn secondary small" id="btn-sync">Use the listed price ${money(ownPrice)}</button></div>` : ''}
       </section>` : '';
     out.innerHTML = `
       <div class="banner ${r.source === 'live' ? 'blue' : 'orange'}">${esc(r.sourceLabel)}${when ? ` · ${when}` : ''}${r.cached ? ' · cached, press Refresh for a new search' : ''}${r.aiRead ? ' · listings read by AI' : (r.aiError ? ' · AI reading failed, rules used' : '')}</div>
@@ -187,17 +189,26 @@
       </div>`;
     out.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { state.mode = b.dataset.mode; runCheck(car, 'cached', b.dataset.mode); }));
     out.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderResult(car, r); }));
-    const memoBtn = document.getElementById('btn-memo');
-    if (memoBtn) memoBtn.addEventListener('click', async () => {
+    const syncBtn = document.getElementById('btn-sync');
+    if (syncBtn) syncBtn.addEventListener('click', async () => {
+      await applyPrice(car, ownPrice, 'Synced with the live listing');
+      runCheck(car, 'cached', r.mode);
+    });
+    const writeMemo = async () => {
       const box = document.getElementById('memo');
-      box.innerHTML = '<div style="font-size: 14px"><span class="spinner" style="border-top-color:#FFF"></span>Claude is reading the comparables and writing…</div>';
+      box.innerHTML = '<div style="font-size: 14px"><span class="spinner" style="border-top-color:#FFF"></span>Claude is reading the comparables and writing (20 to 40 seconds)…</div>';
       try {
         const m = await api(`/inventory/${car.id}/memo`, { method: 'POST', body: JSON.stringify({ mode: r.mode }) });
         box.innerHTML = `<div class="memo"><div class="label" style="color:#B8B8B8">AI pricing memo</div><div style="white-space: pre-line">${md(m.memo)}</div>
           <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing headline</div><div style="font-weight: 600">${esc(m.headline)}</div>
           <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing description</div><div style="white-space: pre-line">${md(m.description)}</div></div>`;
-      } catch (e) { box.innerHTML = `<div class="banner orange">${esc(e.message)}</div>`; }
-    });
+      } catch (e) {
+        box.innerHTML = `<div class="banner orange" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center"><span>${esc(e.message === 'Load failed' || /fetch/i.test(e.message) ? 'The connection dropped before the memo arrived.' : e.message)}</span><button class="btn secondary small" id="btn-memo-retry">Try again</button></div>`;
+        document.getElementById('btn-memo-retry').addEventListener('click', writeMemo);
+      }
+    };
+    const memoBtn = document.getElementById('btn-memo');
+    if (memoBtn) memoBtn.addEventListener('click', writeMemo);
     if (canAct) {
       const ap = document.getElementById('btn-apply');
       if (ap) ap.addEventListener('click', () => applyPrice(car, rec.listAt, `Market check: median ${money(s.median)}, ${s.used} comparables`));
