@@ -18,9 +18,10 @@ async function fetchListings(car, opts) {
   const o = opts || {};
   const key = cacheKey(car);
   if (!o.refresh) {
-    const hit = store.cache.get(key, CACHE_MS);
+    const hit = store.cache.get(key, o.cacheOnly ? 7 * 24 * 3600 * 1000 : CACHE_MS);
     if (hit) return Object.assign({ cached: true, fetchedAt: hit.at }, hit.value);
   }
+  if (o.cacheOnly && liveAvailable()) return null;
   if (liveAvailable()) {
     try {
       const r = await apify.search(car, o);
@@ -60,6 +61,7 @@ async function enrich(car, data) {
 
 async function check(car, opts) {
   const data = await fetchListings(car, opts);
+  if (!data) return null;
   const isOwn = ownMatcher();
   data.listings.forEach((l) => { l.isOwn = isOwn(l); });
   const en = await enrich(car, data);

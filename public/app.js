@@ -5,6 +5,8 @@
   const money = (n) => n == null ? '—' : '$' + Number(n).toLocaleString('en-CA');
   const num = (n) => n == null ? '—' : Number(n).toLocaleString('en-CA');
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // Minimal, safe formatting for AI text: escape first, then bold and bullet lines.
+  const md = (t) => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').split('\n').map((line) => /^\s*[-•]\s+/.test(line) ? `<div class="bul">${line.replace(/^\s*[-•]\s+/, '')}</div>` : line).join('\n');
   const srcClass = (s) => 'src-' + String(s || '').toLowerCase().replace(/[^a-z]/g, '').replace(/ca$/, '');
   const LEVELS = { exact: ['Exact match', 'green'], close: ['Close match', 'blue'], similar: ['Similar, trim not confirmed', ''], different: ['Different variant', 'orange'] };
   const MODES = [['exact', 'Same trim only'], ['close', 'Same trim or close'], ['broad', 'Same model']];
@@ -191,9 +193,9 @@
       box.innerHTML = '<div style="font-size: 14px"><span class="spinner" style="border-top-color:#FFF"></span>Claude is reading the comparables and writing…</div>';
       try {
         const m = await api(`/inventory/${car.id}/memo`, { method: 'POST', body: JSON.stringify({ mode: r.mode }) });
-        box.innerHTML = `<div class="memo"><div class="label" style="color:#B8B8B8">AI pricing memo</div><div style="white-space: pre-line">${esc(m.memo)}</div>
+        box.innerHTML = `<div class="memo"><div class="label" style="color:#B8B8B8">AI pricing memo</div><div style="white-space: pre-line">${md(m.memo)}</div>
           <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing headline</div><div style="font-weight: 600">${esc(m.headline)}</div>
-          <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing description</div><div style="white-space: pre-line">${esc(m.description)}</div></div>`;
+          <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing description</div><div style="white-space: pre-line">${md(m.description)}</div></div>`;
       } catch (e) { box.innerHTML = `<div class="banner orange">${esc(e.message)}</div>`; }
     });
     if (canAct) {
@@ -336,7 +338,7 @@
       <div class="card" id="chat" style="min-height: 200px">${chat.length ? '' : '<div class="sub">No questions yet.</div>'}</div>
       <form class="row" id="qform" style="align-items: flex-end"><label class="field" style="flex: 1 1 320px">Your question<input class="input" name="q" type="text" placeholder="For example: which cars should I reprice this week?" ${config.aiAvailable ? '' : 'disabled'}></label><button class="btn" type="submit" ${config.aiAvailable ? '' : 'disabled'}>Ask</button></form>`;
     const box = document.getElementById('chat');
-    const draw = () => { box.innerHTML = chat.map((m) => `<div class="msg ${m.who}"><div class="label">${m.who === 'you' ? 'You' : 'Assistant'}</div><div style="white-space: pre-line">${esc(m.text)}</div></div>`).join('') || '<div class="sub">No questions yet.</div>'; box.scrollTop = box.scrollHeight; };
+    const draw = () => { box.innerHTML = chat.map((m) => `<div class="msg ${m.who}"><div class="label">${m.who === 'you' ? 'You' : 'Assistant'}</div><div style="white-space: pre-line">${md(m.text)}</div></div>`).join('') || '<div class="sub">No questions yet.</div>'; box.scrollTop = box.scrollHeight; };
     draw();
     const send = async (q) => {
       if (!q) return;

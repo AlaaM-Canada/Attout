@@ -145,3 +145,4 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; 
 .msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; max-width: 85%; }
 .msg.you { background: var(--blue-soft); color: var(--blue-ink); margin-left: auto; }
 .msg.ai { background: var(--page); }
+.bul { padding-left: 16px; position: relative; } .bul::before { content: '•'; position: absolute; left: 2px; }

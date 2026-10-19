@@ -128,8 +128,12 @@ app.post('/api/assistant', async (req, res) => {
   if (!ai.available()) return res.status(503).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY.' });
   try {
     const inventory = store.inventory.all().map(withDerived).map((c) => ({ id: c.id, car: `${c.year} ${c.make} ${c.model} ${c.trim || ''}`.trim(), km: c.km, listPrice: c.listPrice, totalCost: c.totalCost, daysInStock: c.daysInStock, location: c.location, offers: (c.offers || []).map((o) => o.label), priceHistory: c.priceHistory || [] }));
+    // Market statistics for every car that has a cached search (no new searches are triggered here).
     const marketChecks = [];
-    store.cache.keys().forEach((k) => { if (k.indexOf('|ai|') === -1) { const hit = store.cache.get(k, 7 * 24 * 3600 * 1000); if (hit && hit.value && hit.value.listings) marketChecks.push({ key: k, fetchedAt: hit.at, listings: hit.value.listings.length, prices: hit.value.listings.map((l) => l.price).sort((a, b) => a - b) }); } });
+    for (const c of store.inventory.all().map(withDerived)) {
+      const r = await market.check(c, { cacheOnly: true });
+      if (r) marketChecks.push({ id: c.id, car: `${c.year} ${c.make} ${c.model}`, checkedAt: r.fetchedAt, comparables: r.stats.used, median: r.stats.median, low: r.stats.low, high: r.stats.high, pctVsMedian: r.stats.pctVsMedian, position: r.stats.position, rank: r.stats.rank, verdict: r.recommendation.verdict, targetPrice: r.recommendation.listAt, floor: r.recommendation.floor, ownListings: r.own.map((o) => ({ source: o.source, price: o.price, daysOnMarket: o.daysOnMarket })) });
+    }
     const answer = await ai.assistant(q, { inventory, marketChecks, audit: store.audit.all().slice(0, 40) }, DEALER);
     store.audit.add({ action: 'Assistant question', module: 'Assistant', target: q.slice(0, 80) });
     res.json({ answer });
