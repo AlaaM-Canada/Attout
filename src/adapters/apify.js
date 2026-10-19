@@ -61,7 +61,8 @@ function normalize(items) {
         daysOnMarket: it.days_on_market != null ? Number(it.days_on_market) : null,
         priceDrop: !!it.price_drop,
         listedAt: it.listed_at || null,
-        vin: it.vin || null
+        vin: it.vin || null,
+        stockNumber: it.stock_number || null
       });
     });
   });
@@ -97,4 +98,67 @@ async function search(car, opts) {
   return { input, raw: Array.isArray(items) ? items.length : 0, listings: normalize(items) };
 }
 
-module.exports = { name: 'apify', search, normalize, buildInput };
+// Async API: start a run, poll its status and item count, then read the dataset. Lets the UI show real progress.
+async function startRun(input) {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) throw new Error('APIFY_TOKEN is not set');
+  const res = await fetch(`${BASE}/acts/${ACTOR}/runs?token=${encodeURIComponent(token)}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) });
+  if (!res.ok) throw new Error(`Apify returned ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const d = (await res.json()).data;
+  return { runId: d.id, datasetId: d.defaultDatasetId };
+}
+
+async function runStatus(runId) {
+  const token = process.env.APIFY_TOKEN;
+  const res = await fetch(`${BASE}/actor-runs/${runId}?token=${encodeURIComponent(token)}`);
+  if (!res.ok) throw new Error(`Apify returned ${res.status}`);
+  const d = (await res.json()).data;
+  let items = 0;
+  try {
+    const ds = await fetch(`${BASE}/datasets/${d.defaultDatasetId}?token=${encodeURIComponent(token)}`);
+    if (ds.ok) items = (await ds.json()).data.itemCount || 0;
+  } catch (e) { /* ignore */ }
+  return { status: d.status, items, datasetId: d.defaultDatasetId };
+}
+
+async function datasetItems(datasetId) {
+  const token = process.env.APIFY_TOKEN;
+  const res = await fetch(`${BASE}/datasets/${datasetId}/items?token=${encodeURIComponent(token)}&format=json&clean=true`);
+  if (!res.ok) throw new Error(`Apify returned ${res.status}`);
+  return res.json();
+}
+
+// Runs a search while reporting progress: onProgress(pct, message).
+async function searchWithProgress(input, onProgress) {
+  const started = await startRun(input);
+  const max = input.max_results || 25, t0 = Date.now(), limitMs = Number(process.env.APIFY_TIMEOUT_S || 240) * 1000;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 3000));
+    const st = await runStatus(started.runId);
+    if (st.status === 'SUCCEEDED') {
+      const items = await datasetItems(st.datasetId);
+      return { input, raw: Array.isArray(items) ? items.length : 0, listings: normalize(items) };
+    }
+    if (['FAILED', 'ABORTED', 'TIMED-OUT'].includes(st.status)) throw new Error(`Apify run ${st.status.toLowerCase()}`);
+    if (Date.now() - t0 > limitMs) throw new Error('Search timed out');
+    const byItems = Math.min(85, Math.round(st.items / max * 85));
+    const byTime = Math.min(60, Math.round((Date.now() - t0) / limitMs * 100));
+    onProgress(Math.max(5, byItems, byTime), st.items ? `${st.items} listings found so far` : 'Contacting the listing sites');
+  }
+}
+
+// Input for pulling the dealer's own listings from one site, near the lot.
+function dealerInput(opts) {
+  const o = opts || {};
+  return {
+    vehicles: o.makes && o.makes.length ? o.makes : [],
+    postal_code: process.env.DEALER_POSTAL_CODE || 'M1R 2Y5',
+    radius_km: Number(process.env.DEALER_RADIUS_KM || 3),
+    condition: 'used', seller_type: 'dealer',
+    max_results: Number(process.env.SEARCH_MAX_RESULTS || 25),
+    sort_by: 'newest',
+    sources: [o.source || 'autotrader']
+  };
+}
+
+module.exports = { name: 'apify', search, normalize, buildInput, searchWithProgress, dealerInput };

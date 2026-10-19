@@ -18,6 +18,19 @@
     return body;
   }
 
+  function progressBar(pct, message) {
+    return `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="progress-head"><span>${esc(message)}</span><span class="mono">${pct}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div></div>`;
+  }
+  // Follows a background job until it finishes, drawing progress into `el`.
+  async function followJob(jobId, el, label) {
+    for (;;) {
+      const j = await api('/jobs/' + jobId);
+      if (j.done) { if (j.error) throw new Error(j.error); return j.result; }
+      el.innerHTML = progressBar(j.pct, `${label}: ${j.message}`);
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+
   let toastTimer;
   function toast(msg) {
     const t = document.getElementById('toast');
@@ -42,18 +55,32 @@
       <div class="inv-head">
         <div><h1>Inventory</h1><div class="sub">Pick a car to check it against the market.</div></div>
         <div class="row"><div class="stat"><div class="label">Cars in stock</div><div class="value">${cars.length}</div></div>
-        <div class="stat"><div class="label">Capital tied up</div><div class="value">${money(capital)}</div></div></div>
+        <div class="stat"><div class="label">Capital tied up</div><div class="value">${money(capital)}</div></div>
+        <button class="btn" id="btn-import" ${config.liveAvailable ? '' : 'disabled title="Live search is off"'}>Refresh from AutoTrader</button></div>
       </div>
+      <div id="import-status"></div>
       <div class="grid grid-3">${cars.map((c) => `
         <a class="card car-card" href="#/car/${esc(c.id)}">
           <div class="photo">${c.image ? `<img src="${esc(c.image)}" alt="">` : 'No photo yet'}</div>
           <div class="title" style="font-family: var(--display); font-weight: 600; font-size: 17px">${esc(carTitle(c))}</div>
-          <div class="row"><span class="mono" style="font-size: 22px; font-weight: 500">${money(c.listPrice)}</span>${agePill(c.daysInStock)}</div>
+          <div class="row"><span class="mono" style="font-size: 22px; font-weight: 500">${money(c.listPrice)}</span>${c.daysFromListing ? `<span class="pill blue">${c.daysInStock} days listed</span>` : agePill(c.daysInStock)}</div>
           <div class="row" style="gap: 6px"><span class="pill">${num(c.km)} km</span><span class="pill">${esc(c.drivetrain || '')}</span><span class="pill">${esc(c.location || '')}</span></div>
-          <div class="sub">Stock ${esc(c.stockNumber || '')} · bought at ${esc(c.source || '')} · cost ${money(c.totalCost)}</div>
+          <div class="sub">${c.stockNumber ? `Stock ${esc(c.stockNumber)} · ` : ''}${c.importSource ? `listed on ${esc(c.importSource)}` : `bought at ${esc(c.source || '')}`}${c.totalCost ? ` · cost ${money(c.totalCost)}` : ' · cost not entered'}</div>
           ${(c.offers || []).length ? `<div class="offers">${c.offers.map((o) => `<span class="pill green">${esc(o.label)}</span>`).join('')}</div>` : ''}
         </a>`).join('')}
       </div>`;
+    const imp = document.getElementById('btn-import');
+    if (imp) imp.addEventListener('click', async () => {
+      imp.disabled = true;
+      const box = document.getElementById('import-status');
+      box.innerHTML = progressBar(2, 'Refreshing from AutoTrader: starting');
+      try {
+        const start = await api('/inventory/import', { method: 'POST', body: '{}' });
+        const r = await followJob(start.jobId, box, 'Refreshing from AutoTrader');
+        toast(`${r.mine} of your listings found: ${r.added} added, ${r.updated} updated.`);
+        renderInventory();
+      } catch (e) { box.innerHTML = `<div class="banner orange">${esc(e.message)}</div>`; imp.disabled = false; }
+    });
   }
 
   // ---------- Car page ----------
@@ -72,13 +99,14 @@
         <div class="car-head-body">
           <div class="row between" style="align-items: flex-start">
             <div><h1>${esc(carTitle(car))}</h1>
-            <div class="sub">Stock ${esc(car.stockNumber || '')} · ${num(car.km)} km · ${esc(car.drivetrain || '')} · ${esc(car.colour || '')}${car.bodyStyle ? ` · ${esc(car.bodyStyle)}` : ''} · bought at ${esc(car.source || '')} · ${esc(car.location || '')}</div></div>
-            ${agePill(car.daysInStock)}
+            <div class="sub">${car.stockNumber ? `Stock ${esc(car.stockNumber)} · ` : ''}${num(car.km)} km · ${esc(car.drivetrain || '')}${car.colour ? ` · ${esc(car.colour)}` : ''}${car.bodyStyle ? ` · ${esc(car.bodyStyle)}` : ''} · ${car.importSource ? `listed on ${esc(car.importSource)}` : `bought at ${esc(car.source || '')}`} · ${esc(car.location || '')}${car.listingUrl ? ` · <a href="${esc(car.listingUrl)}" target="_blank" rel="noopener">Open listing</a>` : ''}</div>
+            ${car.listingHeadline ? `<div class="sub" style="margin-top: 4px">${esc(car.listingHeadline)}</div>` : ''}</div>
+            ${car.daysFromListing ? `<span class="pill blue">${car.daysInStock} days listed</span>` : agePill(car.daysInStock)}
           </div>
           <div class="kv">
             <div><div class="label">List price</div><div class="value" id="cur-price">${money(car.listPrice)}</div></div>
-            <div><div class="label">Total cost</div><div class="value">${money(car.totalCost)}</div></div>
-            <div><div class="label">Margin at list</div><div class="value" id="cur-margin">${money(car.listPrice - car.totalCost)}</div></div>
+            <div><div class="label">Total cost</div><div class="value">${car.totalCost ? money(car.totalCost) : '—'}</div>${car.totalCost ? '' : '<div class="label">not entered</div>'}</div>
+            <div><div class="label">Margin at list</div><div class="value" id="cur-margin">${car.totalCost ? money(car.listPrice - car.totalCost) : '—'}</div></div>
           </div>
           <div class="row" style="gap: 6px">${feats.length ? feats.map((f) => `<span class="pill">${esc(f)}</span>`).join('') : '<span class="sub">No features recorded</span>'}</div>
           <div class="row" style="gap: 8px; align-items: center"><span class="label">Offers:</span><span class="offers" id="offers"></span></div>
@@ -86,7 +114,7 @@
       </section>
       <section class="card">
         <div class="row between">
-          <div><h2>Market check</h2><div class="sub">AutoTrader.ca, Kijiji and CarGurus.ca within 100 km, matched on trim, body style and features.</div></div>
+          <div><h2>Market check</h2><div class="sub">Finds similar cars for sale within 100 km and matches them on trim, body style and features.</div></div>
           <div class="row"><button class="btn" id="btn-check">Search the market</button><button class="btn secondary" id="btn-refresh" title="Ignore cached results and search again">Refresh</button>
           <a class="btn secondary" style="text-decoration: none; display: inline-flex; align-items: center" href="#/market?from=${esc(car.id)}">Edit specs and search</a></div>
         </div>
@@ -113,11 +141,13 @@
   async function runCheck(car, refresh, mode) {
     const btn = document.getElementById('btn-check'), out = document.getElementById('result');
     if (btn) btn.disabled = true;
-    if (!mode) out.innerHTML = `<div class="banner blue"><span class="spinner"></span>${config.liveAvailable && refresh !== 'cached' ? 'Searching AutoTrader.ca, Kijiji and CarGurus.ca. A live search takes one to three minutes.' : 'Loading comparables…'}</div>`;
+    if (!mode) out.innerHTML = progressBar(1, 'Searching the market: starting');
     try {
-      const body = { refresh: !!refresh, mode: mode || state.mode };
-      const r = car.id ? await api(`/inventory/${car.id}/market-check`, { method: 'POST', body: JSON.stringify(body) })
-        : await api('/market-check', { method: 'POST', body: JSON.stringify(Object.assign({}, car, body)) });
+      const body = { refresh: refresh === true, mode: mode || state.mode };
+      const res = await fetch('/api' + (car.id ? `/inventory/${car.id}/market-check` : '/market-check'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(car.id ? body : Object.assign({}, car, body)) });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || ('Request failed: ' + res.status));
+      const r = res.status === 202 ? await followJob(payload.jobId, out, 'Searching the market') : payload;
       state.result = r; state.mode = r.mode; renderResult(car, r);
     } catch (e) { out.innerHTML = `<div class="banner orange">Search failed: ${esc(e.message)}</div>`; }
     if (btn) btn.disabled = false;
@@ -143,7 +173,7 @@
         ${canAct && ownPrice && ownPrice !== car.listPrice ? `<div class="row" style="gap: 10px"><span class="sub">The listing says ${money(ownPrice)} but the inventory says ${money(car.listPrice)}.</span><button class="btn secondary small" id="btn-sync">Use the listed price ${money(ownPrice)}</button></div>` : ''}
       </section>` : '';
     out.innerHTML = `
-      <div class="banner ${r.source === 'live' ? 'blue' : 'orange'}">${esc(r.sourceLabel)}${when ? ` · ${when}` : ''}${r.cached ? ' · cached, press Refresh for a new search' : ''}${r.aiRead ? ' · listings read by AI' : (r.aiError ? ' · AI reading failed, rules used' : '')}</div>
+      <div class="banner ${r.source === 'live' ? 'blue' : 'orange'}">${r.source === 'live' ? `Live market search · ${when}` : esc(r.sourceLabel)}${r.cached ? ' · from the last search, press Refresh for a new one' : ''}${r.aiRead ? ' · listings read by AI' : (r.aiError ? ' · AI reading failed, rules used' : '')}</div>
       ${r.modeNote ? `<div class="banner orange" style="margin-top: 10px">${esc(r.modeNote)}</div>` : ''}
       <div class="results">
         <div class="results-main">

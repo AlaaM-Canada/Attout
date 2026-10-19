@@ -5,6 +5,7 @@ const store = require('./store');
 const market = require('./market');
 const pricing = require('./pricing');
 const ai = require('./ai');
+const jobs = require('./jobs');
 
 const app = express();
 app.use(express.json());
@@ -18,8 +19,8 @@ const DEALER = {
 
 function totalCost(c) { return (c.purchasePrice || 0) + (c.auctionFees || 0) + (c.transport || 0) + (c.reconditioning || 0); }
 function withDerived(c) {
-  const days = c.purchasedAt ? Math.max(0, Math.round((Date.now() - new Date(c.purchasedAt).getTime()) / 86400000)) : null;
-  return Object.assign({}, c, { totalCost: totalCost(c), daysInStock: days });
+  const days = c.purchasedAt ? Math.max(0, Math.round((Date.now() - new Date(c.purchasedAt).getTime()) / 86400000)) : (c.listedDays != null ? c.listedDays : null);
+  return Object.assign({}, c, { totalCost: totalCost(c), daysInStock: days, daysFromListing: !c.purchasedAt && c.listedDays != null });
 }
 
 app.get('/api/config', (req, res) => {
@@ -37,7 +38,7 @@ app.get('/api/inventory/:id', (req, res) => {
 app.put('/api/inventory/:id', (req, res) => {
   const c = store.inventory.get(req.params.id);
   if (!c) return res.status(404).json({ error: 'Car not found' });
-  const allowed = ['year', 'make', 'model', 'trim', 'bodyStyle', 'km', 'drivetrain', 'colour', 'listPrice', 'purchasePrice', 'auctionFees', 'transport', 'reconditioning', 'features', 'location', 'stockNumber', 'source', 'image'];
+  const allowed = ['year', 'make', 'model', 'trim', 'bodyStyle', 'transmission', 'km', 'drivetrain', 'colour', 'listPrice', 'purchasePrice', 'auctionFees', 'transport', 'reconditioning', 'features', 'location', 'stockNumber', 'source', 'image'];
   allowed.forEach((k) => { if (req.body[k] !== undefined) c[k] = req.body[k]; });
   store.inventory.save(c);
   store.audit.add({ action: 'Car updated', module: 'Inventory', target: `${c.year} ${c.make} ${c.model}` });
@@ -45,16 +46,48 @@ app.put('/api/inventory/:id', (req, res) => {
 });
 
 // The core flow: pick a car, search the market, get statistics and a recommendation.
+function logCheck(label, car, result) {
+  store.audit.add({ action: `${label} (${result.source}${result.cached ? ', cached' : ''})`, module: 'Market check', target: `${car.year} ${car.make} ${car.model} ${car.trim || ''}`.trim(), detail: `${result.stats.used} comparables, median $${result.stats.median.toLocaleString('en-CA')}` });
+}
+
+// Fast path when the search is cached; otherwise a background job the client polls for progress.
+async function checkOrJob(car, body, label, res) {
+  const opts = { refresh: !!body.refresh, mode: body.mode };
+  if (!opts.refresh && (market.hasCache(car) || !market.liveAvailable())) {
+    const result = await market.check(car, opts);
+    logCheck(label, car, result);
+    return res.json(result);
+  }
+  const job = jobs.create('market-check', async (progress) => {
+    progress(3, 'Starting the search', 'searching');
+    const result = await market.check(car, Object.assign({}, opts, { onProgress: progress }));
+    logCheck(label, car, result);
+    return result;
+  });
+  res.status(202).json({ jobId: job.id });
+}
+
 app.post('/api/inventory/:id/market-check', async (req, res) => {
   const c = store.inventory.get(req.params.id);
   if (!c) return res.status(404).json({ error: 'Car not found' });
-  try {
-    const result = await market.check(withDerived(c), { refresh: !!(req.body && req.body.refresh), mode: req.body && req.body.mode });
-    store.audit.add({ action: `Market check run (${result.source}${result.cached ? ', cached' : ''})`, module: 'Market check', target: `${c.year} ${c.make} ${c.model} ${c.trim || ''}`.trim(), detail: `${result.stats.used} comparables, median $${result.stats.median.toLocaleString('en-CA')}` });
-    res.json(result);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  try { await checkOrJob(withDerived(c), req.body || {}, 'Market check run', res); } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/jobs/:id', (req, res) => {
+  const job = jobs.get(req.params.id);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  res.json(jobs.publicView(job));
+});
+
+app.post('/api/inventory/import', (req, res) => {
+  if (!market.liveAvailable()) return res.status(503).json({ error: 'Live search is off (no APIFY_TOKEN)' });
+  const job = jobs.create('import', async (progress) => {
+    progress(3, 'Contacting AutoTrader.ca', 'searching');
+    const r = await market.importOwnListings({ source: 'autotrader', onProgress: progress });
+    store.audit.add({ action: 'Inventory refreshed from AutoTrader.ca', module: 'Inventory', target: `${r.mine} listings`, detail: `${r.added} added, ${r.updated} updated` });
+    return r;
+  });
+  res.status(202).json({ jobId: job.id });
 });
 
 // Ad-hoc market search: the user types the car's specifications.
@@ -66,11 +99,7 @@ app.post('/api/market-check', async (req, res) => {
     km: num(b.km), drivetrain: b.drivetrain || '', colour: b.colour || '', features: b.features || {}, listPrice: num(b.listPrice), totalCost: num(b.totalCost)
   };
   if (!car.year || !car.make || !car.model) return res.status(400).json({ error: 'Year, make and model are required' });
-  try {
-    const result = await market.check(car, { refresh: !!b.refresh, mode: b.mode });
-    store.audit.add({ action: `Market search run (${result.source}${result.cached ? ', cached' : ''})`, module: 'Market check', target: `${car.year} ${car.make} ${car.model} ${car.trim}`.trim(), detail: `${result.stats.used} comparables, median $${result.stats.median.toLocaleString('en-CA')}` });
-    res.json(result);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  try { await checkOrJob(car, b, 'Market search run', res); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/inventory/:id/price', (req, res) => {
