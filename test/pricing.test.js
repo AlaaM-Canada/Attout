@@ -108,3 +108,17 @@ test('ai module is off without a key and the memo endpoint says so', async () =>
   assert.strictEqual(ai.available(), false);
   await assert.rejects(ai.assistant('x', {}, { name: 'd' }), /ANTHROPIC_API_KEY/);
 });
+
+test('AI replies with broken JSON or prose formatting are still read', () => {
+  const ai = require('../src/ai');
+  const broken = '```json\n[{"i":0,"trim":"Progressiv","matchLevel":"exact","reason":"one trim\nbelow Technik"},{"i":1,"trim":"Tech "quoted" nik","matchLevel":"close","reason":"x"},{"i":2,"trim":"GTS","matchLevel":"different","reason":"Turbo",}]\n```';
+  const out = ai.parseJson(broken);
+  assert.ok(Array.isArray(out) && out.length >= 2, 'salvaged ' + out.length);
+  assert.strictEqual(out[0].matchLevel, 'exact');
+  const sec = ai.parseSections('Sure.\n===MEMO===\nLine one.\nLine "two".\n===HEADLINE===\n2019 Audi A7 Technik\n===DESCRIPTION===\nClean CarFax.', ['MEMO', 'HEADLINE', 'DESCRIPTION']);
+  assert.strictEqual(sec.memo, 'Line one.\nLine "two".');
+  assert.strictEqual(sec.headline, '2019 Audi A7 Technik');
+  assert.strictEqual(sec.description, 'Clean CarFax.');
+  const loose = ai.parseSections('Just a memo with no markers.', ['MEMO', 'HEADLINE', 'DESCRIPTION']);
+  assert.strictEqual(loose.memo, 'Just a memo with no markers.');
+});
