@@ -126,6 +126,55 @@ function fmt(n) { return Number(n || 0).toLocaleString('en-CA'); }
 
 const MODES = { exact: ['exact'], close: ['exact', 'close'], broad: ['exact', 'close', 'similar'] };
 
+const SITE_ORDER = ['AutoTrader.ca', 'Kijiji', 'CarGurus.ca'];
+const siteRank = (s) => { const i = SITE_ORDER.indexOf(s); return i === -1 ? 99 : i; };
+
+// One card per car: the same vehicle listed on several sites becomes a single record with a `sites` list.
+// Grouped by VIN, then by the scraper's vehicle id, then by seller + year/make/model + mileage.
+function groupListings(listings) {
+  const groups = [], byKey = {};
+  const keysOf = (l) => {
+    const k = [];
+    if (l.vin) k.push('vin:' + String(l.vin).toUpperCase());
+    if (l.id && /-[^-]+$/.test(l.id) && !l.sites) k.push('id:' + l.id.replace(/-[^-]+$/, ''));
+    else if (l.id) k.push('id:' + l.id);
+    return k;
+  };
+  const norm = (v) => String(v || '').trim().toLowerCase();
+  // Same seller, same year/make/model and mileage within 1%: the same car posted on another site.
+  const sameCar = (a, b) => a.seller && b.seller && norm(a.seller) === norm(b.seller) && a.year === b.year && norm(a.make) === norm(b.make) && norm(a.model) === norm(b.model)
+    && a.km && b.km && Math.abs(a.km - b.km) <= Math.max(300, a.km * 0.01);
+  listings.forEach((l) => {
+    const sites = (l.sites && l.sites.length ? l.sites : [{ source: l.source, url: l.url || null, price: l.price, daysOnMarket: l.daysOnMarket, dealRating: l.dealRating || '', priceDrop: !!l.priceDrop }]);
+    const keys = keysOf(l);
+    let g = null;
+    keys.forEach((k) => { if (!g && byKey[k]) g = byKey[k]; });
+    if (!g) g = groups.find((x) => sameCar(x, l)) || null;
+    if (!g) {
+      g = Object.assign({}, l, { id: (keys[0] || l.id || String(groups.length)).replace(/^(vin|id|car):/, ''), sites: [] });
+      groups.push(g);
+    } else {
+      // Keep the first non-empty value of every field.
+      Object.keys(l).forEach((f) => { if ((g[f] == null || g[f] === '') && l[f] != null && l[f] !== '' && f !== 'sites') g[f] = l[f]; });
+    }
+    sites.forEach((st) => { if (!g.sites.some((x) => x.source === st.source && (x.url || '') === (st.url || ''))) g.sites.push(Object.assign({}, st)); });
+    keys.forEach((k) => { byKey[k] = g; });
+  });
+  groups.forEach((g) => {
+    g.sites.sort((a, b) => siteRank(a.source) - siteRank(b.source));
+    g.sources = g.sites.map((x) => x.source);
+    g.source = g.sites[0].source;
+    g.url = (g.sites.find((x) => x.url) || {}).url || null;
+    const prices = g.sites.map((x) => Number(x.price) || 0).filter(Boolean);
+    g.price = prices.length ? Math.min.apply(null, prices) : g.price;
+    const days = g.sites.map((x) => x.daysOnMarket).filter((d) => d != null);
+    g.daysOnMarket = days.length ? Math.max.apply(null, days) : (g.daysOnMarket != null ? g.daysOnMarket : null);
+    g.priceDrop = g.sites.some((x) => x.priceDrop);
+    g.dealRating = (g.sites.find((x) => x.dealRating) || {}).dealRating || g.dealRating || '';
+  });
+  return groups;
+}
+
 function analyze(car, listingsIn, modeIn) {
   // The dealer's own listings are shown separately and never compared against themselves.
   const own = listingsIn.filter((l) => l.isOwn);
@@ -160,8 +209,9 @@ function analyze(car, listingsIn, modeIn) {
   const margin = listAt - cost;
   const pct = med ? Math.round((ask - med) / med * 100) : 0;
   const cuts = used.filter((r) => r.priceDrop).length;
+  // How many of the cars are listed on each site (a car on two sites counts once per site).
   const bySource = {};
-  rows.forEach((r) => { bySource[r.source] = (bySource[r.source] || 0) + 1; });
+  rows.forEach((r) => { (r.sites || [{ source: r.source }]).forEach((st) => { bySource[st.source] = (bySource[st.source] || 0) + 1; }); });
   const avgDom = used.filter((r) => r.daysOnMarket != null).map((r) => r.daysOnMarket);
   // Where the dealer's price ranks among the comparables (1 = cheapest).
   const rank = ask ? eqs.filter((v) => v < ask).length + 1 : null;
@@ -210,4 +260,4 @@ function analyze(car, listingsIn, modeIn) {
   };
 }
 
-module.exports = { analyze, classify, adjust, featuresFromText, keyTokens, FEATURES, RATES, MODES };
+module.exports = { analyze, classify, adjust, groupListings, featuresFromText, keyTokens, FEATURES, RATES, MODES };

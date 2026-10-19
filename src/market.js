@@ -52,7 +52,7 @@ function ownMatcher() {
 async function enrich(car, data) {
   // Ask Claude to read the listings once per car and keep the result with the cache.
   if (!ai.available() || !data.listings.length) return { listings: data.listings, aiRead: false, aiError: null };
-  const key = cacheKey(car) + '|ai|' + [car.trim, car.bodyStyle].join(' ').toLowerCase();
+  const key = cacheKey(car) + '|ai2|' + [car.trim, car.bodyStyle].join(' ').toLowerCase();
   const hit = store.cache.get(key, CACHE_MS);
   if (hit && hit.value.fetchedAt === data.fetchedAt) return { listings: hit.value.listings, aiRead: true, aiError: null };
   try {
@@ -87,6 +87,8 @@ async function check(car, opts) {
   const data = await fetchListings(car, o);
   if (!data) return null;
   const isOwn = ownMatcher();
+  // One record per car (the same car on two sites is read, matched and counted once).
+  data.listings = pricing.groupListings(data.listings);
   data.listings.forEach((l) => { l.isOwn = isOwn(l); });
   if (o.onProgress) o.onProgress(80, 'Reading the listings', 'reading');
   const en = await enrich(car, data);

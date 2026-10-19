@@ -173,9 +173,10 @@
     const verdictTitle = { raise: 'Room to raise the price', lower: 'Lower the price to move it', keep: 'Keep the price', none: 'No recommendation yet' }[rec.verdict];
     const actionLabel = { raise: `Raise to ${money(rec.listAt)}`, lower: `Lower to ${money(rec.listAt)}`, keep: `Keep ${money(s.askingPrice)}`, none: '' }[rec.verdict];
     const ownPrice = r.own.length ? Math.min.apply(null, r.own.map((o) => o.price)) : 0;
+    const ownSites = r.own.reduce((acc, o) => acc.concat(o.sites && o.sites.length ? o.sites : [o]), []);
     const ownStrip = r.own.length ? `<section class="own">
-        <div class="row between"><div><strong>Your listing on the market</strong><span class="sub"> · ${r.own.length} platform${r.own.length > 1 ? 's' : ''}${rec.listedFor != null ? ` · listed ${rec.listedFor} days` : ''}${s.rank ? ` · ranks ${s.rank} of ${s.used + 1} on price` : ''}</span></div></div>
-        <div class="own-row">${r.own.map((o) => `<div class="own-item"><span class="pill ${srcClass(o.source)}">${esc(o.source)}</span><span class="mono" style="font-weight: 600">${money(o.price)}</span>${o.dealRating ? `<span class="pill green">${esc(o.dealRating)}</span>` : ''}${o.daysOnMarket != null ? `<span class="sub">${o.daysOnMarket} days</span>` : ''}${o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">Open</a>` : ''}</div>`).join('')}</div>
+        <div class="row between"><div><strong>Your listing on the market</strong><span class="sub"> · ${ownSites.length} site${ownSites.length > 1 ? 's' : ''}${rec.listedFor != null ? ` · listed ${rec.listedFor} days` : ''}${s.rank ? ` · ranks ${s.rank} of ${s.used + 1} on price` : ''}</span></div></div>
+        <div class="own-row">${ownSites.map((o) => `<div class="own-item"><span class="pill ${srcClass(o.source)}">${esc(o.source)}</span><span class="mono" style="font-weight: 600">${money(o.price)}</span>${o.dealRating ? `<span class="pill green">${esc(o.dealRating)}</span>` : ''}${o.daysOnMarket != null ? `<span class="sub">${o.daysOnMarket} days</span>` : ''}${o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">Open</a>` : ''}</div>`).join('')}</div>
         ${canAct && ownPrice && ownPrice !== car.listPrice ? `<div class="row" style="gap: 10px"><span class="sub">The listing says ${money(ownPrice)} but the inventory says ${money(car.listPrice)}.</span><button class="btn secondary small" id="btn-sync">Use the listed price ${money(ownPrice)}</button></div>` : ''}
       </section>` : '';
     out.innerHTML = `
@@ -278,13 +279,18 @@
 
   function listingCard(l) {
     const lv = LEVELS[l.level];
-    const link = l.url ? `<a class="btn secondary small" href="${esc(l.url)}" target="_blank" rel="noopener" style="text-decoration: none; display: inline-flex; align-items: center">Open on ${esc(l.source)}</a>` : `<span class="sub">No direct link in this sample</span>`;
+    const sites = l.sites && l.sites.length ? l.sites : [{ source: l.source, url: l.url, price: l.price }];
+    const linked = sites.filter((st) => st.url);
+    const link = linked.length
+      ? linked.map((st) => `<a class="btn secondary small" href="${esc(st.url)}" target="_blank" rel="noopener" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px">Open on ${esc(st.source)}${st.price && st.price !== l.price ? `<span class="mono sub">${money(st.price)}</span>` : ''}</a>`).join('')
+      : `<span class="sub">No direct link in this sample</span>`;
+    const sitePills = sites.map((st) => `<span class="pill ${srcClass(st.source)}">${esc(st.source)}</span>`).join('');
     return `<article class="listing ${l.included ? '' : 'excluded'}">
       <div class="photo">${l.image ? `<img src="${esc(l.image)}" alt="" loading="lazy">` : 'No photo'}</div>
       <div class="body">
-        <div class="row between"><div class="title">${esc(l.title)}</div><span class="pill ${srcClass(l.source)}">${esc(l.source)}</span></div>
+        <div class="row between"><div class="title">${esc(l.title)}</div><div class="row" style="gap: 4px; flex-wrap: wrap; justify-content: flex-end">${sitePills}</div></div>
         ${l.headline ? `<div class="sub">${esc(l.headline)}</div>` : ''}
-        <div class="row"><span class="price">${money(l.price)}</span>${l.dealRating ? `<span class="pill green">${esc(l.dealRating)}</span>` : ''}${l.priceDrop ? '<span class="pill orange">Price dropped</span>' : ''}${l.daysOnMarket != null ? `<span class="pill">${l.daysOnMarket} days listed</span>` : ''}</div>
+        <div class="row"><span class="price">${money(l.price)}</span>${sites.length > 1 ? `<span class="sub">listed on ${sites.length} sites</span>` : ''}${l.dealRating ? `<span class="pill green">${esc(l.dealRating)}</span>` : ''}${l.priceDrop ? '<span class="pill orange">Price dropped</span>' : ''}${l.daysOnMarket != null ? `<span class="pill">${l.daysOnMarket} days listed</span>` : ''}</div>
         <div class="meta"><span class="pill">${num(l.km)} km</span>${l.trim ? `<span class="pill">${esc(l.trim)}</span>` : '<span class="pill orange">Trim not stated</span>'}${l.body ? `<span class="pill">${esc(l.body)}</span>` : ''}${l.transmission ? `<span class="pill">${esc(l.transmission)}</span>` : ''}${l.drivetrain ? `<span class="pill">${esc(l.drivetrain)}</span>` : ''}${l.colour ? `<span class="pill">${esc(l.colour)}</span>` : ''}</div>
         <div class="seller">${esc(l.seller || (l.sellerType === 'private' ? 'Private seller' : 'Seller not named'))}${l.city ? ` · ${esc(l.city)}` : ''}${l.distanceKm != null ? ` · ${num(l.distanceKm)} km away` : ''}</div>
         <div class="adj"><span class="pill ${lv[1]}">${lv[0]}</span>${l.included ? `<span>Adjusted: <span class="eq">${money(l.equivalent)}</span></span>` : '<span class="sub">Not in the statistics</span>'}${(l.matchReasons.concat(l.adjustNotes)).length ? `<span class="sub">${esc(l.matchReasons.concat(l.adjustNotes).join(' · '))}</span>` : ''}</div>

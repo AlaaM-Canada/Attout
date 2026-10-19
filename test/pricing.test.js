@@ -122,3 +122,26 @@ test('AI replies with broken JSON or prose formatting are still read', () => {
   const loose = ai.parseSections('Just a memo with no markers.', ['MEMO', 'HEADLINE', 'DESCRIPTION']);
   assert.strictEqual(loose.memo, 'Just a memo with no markers.');
 });
+
+test('the same car on several sites becomes one record with a button per site', () => {
+  const mk = (id, source, url, price, days, extra) => Object.assign({ id, source, url, price, daysOnMarket: days, year: 2016, make: 'BMW', model: 'M6', km: 65191, seller: 'BMW Autohaus', title: '2016 BMW M6', trim: 'Ultimate' }, extra || {});
+  const grouped = pricing.groupListings([
+    mk('v1-AutoTrader.ca', 'AutoTrader.ca', 'https://a/1', 55888, 25),
+    mk('v1-CarGurus.ca', 'CarGurus.ca', 'https://c/1', 55500, 30),
+    mk('v9-Kijiji', 'Kijiji', 'https://k/9', 55888, 12, { id: 'v9-Kijiji', km: 65300 }),
+    mk('v2-AutoTrader.ca', 'AutoTrader.ca', 'https://a/2', 61000, 40, { seller: 'Other Motors', km: 40000 })
+  ]);
+  assert.strictEqual(grouped.length, 2, 'two cars');
+  const car = grouped[0];
+  assert.deepStrictEqual(car.sources, ['AutoTrader.ca', 'Kijiji', 'CarGurus.ca']);
+  assert.strictEqual(car.sites.length, 3);
+  assert.strictEqual(car.price, 55500, 'lowest price across sites');
+  assert.strictEqual(car.daysOnMarket, 30, 'longest listed');
+  assert.strictEqual(car.url, 'https://a/1');
+  const a = pricing.analyze({ year: 2016, make: 'BMW', model: 'M6', trim: 'Ultimate', km: 60000, listPrice: 36998, features: {} }, grouped, 'broad');
+  assert.strictEqual(a.stats.total, 2, 'statistics count cars, not site listings');
+  assert.deepStrictEqual(a.stats.bySource, { 'AutoTrader.ca': 2, Kijiji: 1, 'CarGurus.ca': 1 });
+  // Grouping twice changes nothing.
+  assert.strictEqual(pricing.groupListings(grouped).length, 2);
+  assert.strictEqual(pricing.groupListings(grouped)[0].sites.length, 3);
+});

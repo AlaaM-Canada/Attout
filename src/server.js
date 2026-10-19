@@ -165,7 +165,7 @@ app.post('/api/assistant', async (req, res) => {
     const marketChecks = [];
     for (const c of store.inventory.all().map(withDerived)) {
       const r = await market.check(c, { cacheOnly: true });
-      if (r) marketChecks.push({ id: c.id, car: `${c.year} ${c.make} ${c.model}`, checkedAt: r.fetchedAt, comparables: r.stats.used, median: r.stats.median, low: r.stats.low, high: r.stats.high, pctVsMedian: r.stats.pctVsMedian, position: r.stats.position, rank: r.stats.rank, verdict: r.recommendation.verdict, targetPrice: r.recommendation.listAt, floor: r.recommendation.floor, ownListings: r.own.map((o) => ({ source: o.source, price: o.price, daysOnMarket: o.daysOnMarket })) });
+      if (r) marketChecks.push({ id: c.id, car: `${c.year} ${c.make} ${c.model}`, checkedAt: r.fetchedAt, comparables: r.stats.used, median: r.stats.median, low: r.stats.low, high: r.stats.high, pctVsMedian: r.stats.pctVsMedian, position: r.stats.position, rank: r.stats.rank, verdict: r.recommendation.verdict, targetPrice: r.recommendation.listAt, floor: r.recommendation.floor, ownListings: r.own.map((o) => ({ listedOn: o.sources || [o.source], price: o.price, daysOnMarket: o.daysOnMarket })) });
     }
     const answer = await ai.assistant(q, { inventory, marketChecks, audit: store.audit.all().slice(0, 40) }, DEALER);
     store.audit.add({ action: 'Assistant question', module: 'Assistant', target: q.slice(0, 80) });
