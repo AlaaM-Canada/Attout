@@ -24,6 +24,7 @@ async function fetchListings(car, opts) {
     if (hit) return Object.assign({ cached: true, fetchedAt: hit.at }, hit.value);
   }
   if (o.cacheOnly && liveAvailable()) return null;
+  if (o.cacheOnly) o.skipMemo = true;
   if (liveAvailable()) {
     try {
       const r = o.onProgress ? await apify.searchWithProgress(apify.buildInput(car, o), o.onProgress) : await apify.search(car, o);
@@ -61,17 +62,42 @@ async function enrich(car, data) {
   } catch (e) { return { listings: data.listings, aiRead: false, aiError: e.message }; }
 }
 
+function memoKey(car, mode, fetchedAt) { return cacheKey(car) + '|memo|' + [car.id || car.trim, mode, car.listPrice, car.totalCost, fetchedAt].join('|'); }
+function memoCached(car, mode) {
+  const hit = store.cache.get(cacheKey(car), CACHE_MS);
+  return !!(hit && store.cache.get(memoKey(car, mode || 'close', hit.at), CACHE_MS));
+}
+
+// Claude writes the recommendation and listing copy; cached per car, mode, price and search.
+async function writeMemo(car, analysis, fetchedAt, dealer, force) {
+  if (!ai.available()) return { ai: null, aiMemoError: null };
+  const key = memoKey(car, analysis.mode, fetchedAt);
+  if (!force) { const hit = store.cache.get(key, CACHE_MS); if (hit) return { ai: hit.value, aiMemoError: null }; }
+  try {
+    const out = await ai.memoAndCopy(car, analysis, dealer);
+    store.cache.set(key, out);
+    return { ai: out, aiMemoError: null };
+  } catch (e) { return { ai: null, aiMemoError: e.message }; }
+}
+
+const DEALER = { name: process.env.DEALER_NAME || 'Canadian Fine Motors', city: process.env.DEALER_CITY || 'Scarborough, ON' };
+
 async function check(car, opts) {
   const o = opts || {};
   const data = await fetchListings(car, o);
   if (!data) return null;
   const isOwn = ownMatcher();
   data.listings.forEach((l) => { l.isOwn = isOwn(l); });
-  if (o.onProgress) o.onProgress(88, 'Reading the listings', 'reading');
+  if (o.onProgress) o.onProgress(80, 'Reading the listings', 'reading');
   const en = await enrich(car, data);
-  if (o.onProgress) o.onProgress(96, 'Matching and pricing', 'pricing');
-  const analysis = pricing.analyze(car, en.listings, (opts || {}).mode);
-  return Object.assign({ car, source: data.source, sourceLabel: data.sourceLabel, cached: data.cached, fetchedAt: data.fetchedAt, error: data.error || null, liveAvailable: liveAvailable(), aiRead: en.aiRead, aiError: en.aiError, aiAvailable: ai.available() }, analysis);
+  if (o.onProgress) o.onProgress(90, 'Matching and pricing', 'pricing');
+  const analysis = pricing.analyze(car, en.listings, o.mode);
+  let memo = { ai: null, aiMemoError: null };
+  if (!o.skipMemo) {
+    if (o.onProgress) o.onProgress(93, 'Writing the recommendation', 'writing');
+    memo = await writeMemo(car, analysis, data.fetchedAt, DEALER, !!o.rewrite);
+  }
+  return Object.assign({ car, source: data.source, sourceLabel: data.sourceLabel, cached: data.cached, fetchedAt: data.fetchedAt, error: data.error || null, liveAvailable: liveAvailable(), aiRead: en.aiRead, aiError: en.aiError, aiAvailable: ai.available() }, analysis, memo);
 }
 
 // Pull the dealer's own listings from one site (AutoTrader by default) and merge them into inventory.
@@ -106,4 +132,4 @@ async function importOwnListings(opts) {
   return { found: r.listings.length, mine: mine.length, added, updated };
 }
 
-module.exports = { check, fetchListings, hasCache, liveAvailable, cacheKey, importOwnListings };
+module.exports = { check, fetchListings, hasCache, memoCached, liveAvailable, cacheKey, importOwnListings };

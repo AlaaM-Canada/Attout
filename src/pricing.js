@@ -25,7 +25,7 @@ const FEATURES = [
 
 // Body styles: a listing that names a different one than the car is a different variant.
 const BODY_GROUPS = [
-  ['coupe', 'coupé', 'gran coupe', 'sportback', '2dr', '2-door'],
+  ['coupe', 'coupé', '2dr', '2-door'],
   ['sedan', '4dr', '4-door', 'berline'],
   ['convertible', 'cabriolet', 'cabrio', 'roadster', 'spyder', 'spider'],
   ['wagon', 'avant', 'touring', 'estate', 'allroad', 'sport wagon'],
@@ -70,6 +70,7 @@ function keyTokens(car) {
 
 // Match level: exact | close | similar | different, with reasons the user can read.
 function classify(car, l) {
+  if (l.aiLevel) return { level: l.aiLevel, reasons: [l.aiReason ? `${l.aiReason} (AI)` : 'judged by AI'] };
   if (l.aiSameVariant === false) return { level: 'different', reasons: [`different variant${l.aiVariant ? ` (${l.aiVariant})` : ''}, read by AI`] };
   const carText = `${car.trim || ''} ${car.bodyStyle || ''}`;
   // Model words beyond the car's own model name count as a variant ("A4 allroad", "Cayenne Coupe").
@@ -78,7 +79,7 @@ function classify(car, l) {
   const reasons = [];
   const carBody = bodyOf(carText), listBody = bodyOf(listText);
   if (carBody !== -1 && listBody !== -1 && carBody !== listBody) return { level: 'different', reasons: ['different body style'] };
-  if (carBody === -1 && listBody !== -1 && BODY_GROUPS[listBody][0] !== 'sedan') return { level: 'different', reasons: [`listing is a ${BODY_GROUPS[listBody][0]}`] };
+  const bodyUnsure = carBody === -1 && listBody !== -1 && BODY_GROUPS[listBody][0] !== 'sedan';
   const carVar = variantsOf(carText), listVar = variantsOf(listText);
   const extra = listVar.filter((v) => !carVar.includes(v));
   const missing = carVar.filter((v) => !listVar.includes(v));
@@ -92,7 +93,8 @@ function classify(car, l) {
   const bodyUnknown = carBody !== -1 && listBody === -1;
   if (!trimStated) reasons.push('trim not stated in the listing');
   if (bodyUnknown) reasons.push('body style not stated');
-  const cap = (level) => (level === 'exact' && bodyUnknown) ? 'close' : level;
+  if (bodyUnsure) reasons.push(`listing says ${BODY_GROUPS[listBody][0]}; confirm your car's body style`);
+  const cap = (level) => (level === 'exact' && (bodyUnknown || bodyUnsure)) ? 'close' : level;
   if (keys.length === 0) return { level: trimStated ? cap('exact') : 'similar', reasons };
   if (hit.length === keys.length) return { level: cap('exact'), reasons };
   if (hit.length > 0) { reasons.push(`matches ${hit.join(', ')} but not ${keys.filter((k) => !hit.includes(k)).join(', ')}`); return { level: 'close', reasons }; }

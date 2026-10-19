@@ -53,7 +53,8 @@ function logCheck(label, car, result) {
 // Fast path when the search is cached; otherwise a background job the client polls for progress.
 async function checkOrJob(car, body, label, res) {
   const opts = { refresh: !!body.refresh, mode: body.mode };
-  if (!opts.refresh && (market.hasCache(car) || !market.liveAvailable())) {
+  const memoReady = !ai.available() || market.memoCached(car, opts.mode);
+  if (!opts.refresh && memoReady && (market.hasCache(car) || !market.liveAvailable())) {
     const result = await market.check(car, opts);
     logCheck(label, car, result);
     return res.json(result);
@@ -139,16 +140,19 @@ app.delete('/api/inventory/:id/offers/:offerId', (req, res) => {
 });
 
 // Claude writes the pricing memo and listing copy from the latest analysis.
-app.post('/api/inventory/:id/memo', async (req, res) => {
+// Rewrite the AI recommendation and listing copy for a car (background job, polled by the client).
+app.post('/api/inventory/:id/memo', (req, res) => {
   const c = store.inventory.get(req.params.id);
   if (!c) return res.status(404).json({ error: 'Car not found' });
   if (!ai.available()) return res.status(503).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY.' });
-  try {
-    const analysis = await market.check(withDerived(c), { mode: req.body && req.body.mode });
-    const out = await ai.memoAndCopy(withDerived(c), analysis, DEALER);
-    store.audit.add({ action: 'AI memo and listing copy written', module: 'Market check', target: `${c.year} ${c.make} ${c.model}` });
-    res.json(out);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  const job = jobs.create('memo', async (progress) => {
+    progress(10, 'Reading the comparables', 'writing');
+    const result = await market.check(withDerived(c), { mode: req.body && req.body.mode, rewrite: true, onProgress: progress });
+    if (result.aiMemoError) throw new Error(result.aiMemoError);
+    store.audit.add({ action: 'AI recommendation rewritten', module: 'Market check', target: `${c.year} ${c.make} ${c.model}` });
+    return result;
+  });
+  res.status(202).json({ jobId: job.id });
 });
 
 app.post('/api/assistant', async (req, res) => {

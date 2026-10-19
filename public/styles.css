@@ -151,3 +151,7 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; 
 .progress-head { display: flex; justify-content: space-between; font-size: 14px; font-weight: 500; }
 .progress-track { height: 10px; background: #FFFFFF; border-radius: 5px; overflow: hidden; }
 .progress-fill { height: 10px; background: var(--blue); border-radius: 5px; transition: width 0.6s ease; }
+
+.copy { background: var(--dark2); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.copy summary { cursor: pointer; font-weight: 600; }
+.reco .progress { background: var(--dark2); color: #F2F2F2; } .reco .progress-track { background: #4A4A4A; }

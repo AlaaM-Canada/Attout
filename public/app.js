@@ -208,8 +208,10 @@
               <div class="tile"><span>Floor</span><span class="big">${money(rec.floor)}</span><span>lowest to accept</span></div>
               <div class="tile"><span>Margin</span><span class="big">${money((rec.verdict === 'keep' ? s.askingPrice : rec.listAt) - (car.totalCost || 0))}</span><span>${car.totalCost ? 'after all costs' : 'no cost entered'}</span></div>
             </div>
-            <div style="font-size: 14px; line-height: 1.5">${esc(rec.reason)}</div>
-            ${config.aiAvailable && canAct ? `<div id="memo"><button class="btn secondary small" id="btn-memo" style="background: var(--dark2); color: #FFF; border-color: #FFF">Write the memo and listing copy with AI</button></div>` : ''}
+            ${r.ai ? `<div style="font-size: 14px; line-height: 1.55; white-space: pre-line">${md(r.ai.memo)}</div><div class="label" style="color:#B8B8B8">Written by AI from ${s.used} comparables</div>`
+              : `<div style="font-size: 14px; line-height: 1.5">${esc(rec.reason)}</div>${r.aiMemoError ? `<div class="label" style="color:#F2C27B">AI write-up failed: ${esc(r.aiMemoError)}</div>` : ''}`}
+            ${r.ai ? `<details class="copy"><summary>Listing copy for AutoTrader</summary><div class="label" style="color:#B8B8B8; margin-top: 8px">Headline</div><div style="font-weight: 600">${esc(r.ai.headline)}</div><div class="label" style="color:#B8B8B8; margin-top: 8px">Description</div><div style="white-space: pre-line">${md(r.ai.description)}</div></details>` : ''}
+            ${config.aiAvailable && canAct ? `<div id="memo"><button class="btn secondary small" id="btn-memo" style="background: var(--dark2); color: #FFF; border-color: #FFF">${r.ai ? 'Rewrite with AI' : 'Write the recommendation with AI'}</button></div>` : ''}
             ${canAct ? `<div class="row" style="gap: 8px">
               ${rec.verdict === 'raise' || rec.verdict === 'lower' ? `<button class="btn small" id="btn-apply" style="background: var(--blue)">${actionLabel}</button>` : ''}
               <button class="btn secondary small" id="btn-custom" style="background: var(--dark2); color: #FFF; border-color: #FFF">Other price</button>
@@ -232,14 +234,13 @@
     });
     const writeMemo = async () => {
       const box = document.getElementById('memo');
-      box.innerHTML = '<div style="font-size: 14px"><span class="spinner" style="border-top-color:#FFF"></span>Claude is reading the comparables and writing (20 to 40 seconds)…</div>';
+      box.innerHTML = progressBar(5, 'Writing the recommendation');
       try {
-        const m = await api(`/inventory/${car.id}/memo`, { method: 'POST', body: JSON.stringify({ mode: r.mode }) });
-        box.innerHTML = `<div class="memo"><div class="label" style="color:#B8B8B8">AI pricing memo</div><div style="white-space: pre-line">${md(m.memo)}</div>
-          <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing headline</div><div style="font-weight: 600">${esc(m.headline)}</div>
-          <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing description</div><div style="white-space: pre-line">${md(m.description)}</div></div>`;
+        const start = await api(`/inventory/${car.id}/memo`, { method: 'POST', body: JSON.stringify({ mode: r.mode }) });
+        const fresh = await followJob(start.jobId, box, 'Writing the recommendation');
+        state.result = fresh; renderResult(car, fresh);
       } catch (e) {
-        box.innerHTML = `<div class="banner orange" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center"><span>${esc(e.message === 'Load failed' || /fetch/i.test(e.message) ? 'The connection dropped before the memo arrived.' : e.message)}</span><button class="btn secondary small" id="btn-memo-retry">Try again</button></div>`;
+        box.innerHTML = `<div class="banner orange" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center"><span>${esc(e.message)}</span><button class="btn secondary small" id="btn-memo-retry">Try again</button></div>`;
         document.getElementById('btn-memo-retry').addEventListener('click', writeMemo);
       }
     };
