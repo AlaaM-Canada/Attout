@@ -9,6 +9,8 @@ services:
     envVars:
       - key: APIFY_TOKEN
         sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
       - key: DEALER_NAME
         value: Canadian Fine Motors
       - key: DEALER_CITY

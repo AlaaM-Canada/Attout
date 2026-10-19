@@ -70,6 +70,7 @@ function keyTokens(car) {
 
 // Match level: exact | close | similar | different, with reasons the user can read.
 function classify(car, l) {
+  if (l.aiSameVariant === false) return { level: 'different', reasons: [`different variant${l.aiVariant ? ` (${l.aiVariant})` : ''}, read by AI`] };
   const carText = `${car.trim || ''} ${car.bodyStyle || ''}`;
   // Model words beyond the car's own model name count as a variant ("A4 allroad", "Cayenne Coupe").
   const carModel = tokens(car.model), listModelExtra = tokens(l.model).filter((t) => !carModel.includes(t) && !tokens(car.make).includes(t));

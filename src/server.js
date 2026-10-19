@@ -4,6 +4,7 @@ const express = require('express');
 const store = require('./store');
 const market = require('./market');
 const pricing = require('./pricing');
+const ai = require('./ai');
 
 const app = express();
 app.use(express.json());
@@ -22,7 +23,7 @@ function withDerived(c) {
 }
 
 app.get('/api/config', (req, res) => {
-  res.json({ dealer: DEALER, liveAvailable: market.liveAvailable(), features: pricing.FEATURES.map((f) => ({ key: f.key, label: f.label, value: f.value })), rates: pricing.RATES });
+  res.json({ dealer: DEALER, liveAvailable: market.liveAvailable(), aiAvailable: ai.available(), aiModel: ai.MODEL, features: pricing.FEATURES.map((f) => ({ key: f.key, label: f.label, value: f.value })), rates: pricing.RATES });
 });
 
 app.get('/api/inventory', (req, res) => res.json(store.inventory.all().map(withDerived)));
@@ -106,6 +107,33 @@ app.delete('/api/inventory/:id/offers/:offerId', (req, res) => {
   store.inventory.save(c);
   store.audit.add({ action: 'Offer removed', module: 'Inventory', target: `${c.year} ${c.make} ${c.model}` });
   res.json(withDerived(c));
+});
+
+// Claude writes the pricing memo and listing copy from the latest analysis.
+app.post('/api/inventory/:id/memo', async (req, res) => {
+  const c = store.inventory.get(req.params.id);
+  if (!c) return res.status(404).json({ error: 'Car not found' });
+  if (!ai.available()) return res.status(503).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY.' });
+  try {
+    const analysis = await market.check(withDerived(c), { mode: req.body && req.body.mode });
+    const out = await ai.memoAndCopy(withDerived(c), analysis, DEALER);
+    store.audit.add({ action: 'AI memo and listing copy written', module: 'Market check', target: `${c.year} ${c.make} ${c.model}` });
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/assistant', async (req, res) => {
+  const q = String((req.body || {}).question || '').trim();
+  if (!q) return res.status(400).json({ error: 'Question is required' });
+  if (!ai.available()) return res.status(503).json({ error: 'AI is not configured. Set ANTHROPIC_API_KEY.' });
+  try {
+    const inventory = store.inventory.all().map(withDerived).map((c) => ({ id: c.id, car: `${c.year} ${c.make} ${c.model} ${c.trim || ''}`.trim(), km: c.km, listPrice: c.listPrice, totalCost: c.totalCost, daysInStock: c.daysInStock, location: c.location, offers: (c.offers || []).map((o) => o.label), priceHistory: c.priceHistory || [] }));
+    const marketChecks = [];
+    store.cache.keys().forEach((k) => { if (k.indexOf('|ai|') === -1) { const hit = store.cache.get(k, 7 * 24 * 3600 * 1000); if (hit && hit.value && hit.value.listings) marketChecks.push({ key: k, fetchedAt: hit.at, listings: hit.value.listings.length, prices: hit.value.listings.map((l) => l.price).sort((a, b) => a - b) }); } });
+    const answer = await ai.assistant(q, { inventory, marketChecks, audit: store.audit.all().slice(0, 40) }, DEALER);
+    store.audit.add({ action: 'Assistant question', module: 'Assistant', target: q.slice(0, 80) });
+    res.json({ answer });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.get('/api/audit', (req, res) => res.json(store.audit.all()));

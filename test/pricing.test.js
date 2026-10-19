@@ -95,3 +95,16 @@ test('own listings are separated and the verdict reflects the current price', as
   assert.ok(['raise', 'lower', 'keep'].includes(a.recommendation.verdict));
   assert.ok(a.stats.rank >= 1);
 });
+
+test('AI variant judgement overrides the rules when present', () => {
+  const car = { year: 2021, make: 'Porsche', model: 'Cayenne', trim: 'GTS', bodyStyle: 'Coupe', km: 40000, features: {} };
+  assert.strictEqual(pricing.classify(car, { trim: 'GTS Coupe', title: '2021 Porsche Cayenne GTS Coupe', headline: '', aiSameVariant: false, aiVariant: 'GTS Coupe with GT package' }).level, 'different');
+  assert.strictEqual(pricing.classify(car, { trim: 'GTS Coupe', title: '2021 Porsche Cayenne GTS Coupe', headline: '', aiSameVariant: true }).level, 'exact');
+});
+
+test('ai module is off without a key and the memo endpoint says so', async () => {
+  const ai = require('../src/ai');
+  delete process.env.ANTHROPIC_API_KEY;
+  assert.strictEqual(ai.available(), false);
+  await assert.rejects(ai.assistant('x', {}, { name: 'd' }), /ANTHROPIC_API_KEY/);
+});

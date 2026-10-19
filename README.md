@@ -49,6 +49,17 @@ APIFY_TOKEN=... npm run warm -- --refresh
 
 Results are cached for `CACHE_HOURS` (default 6).
 
+## Claude (optional)
+
+With `ANTHROPIC_API_KEY` set, Claude is used in four places, all with a rule-based fallback when the key is absent:
+
+1. **Reading listings** – each listing's title, trim and headline text is read once per search and turned into trim, body style, variant and features, which makes the exact/close/different match levels more reliable (cached with the search).
+2. **Pricing memo** – "Write the memo and listing copy with AI" on a car page produces a short memo for the owner.
+3. **Listing copy** – a headline and description for AutoTrader in the same call.
+4. **Assistant** – the Assistant page answers questions from the inventory, market checks and audit log.
+
+Get a key from the Claude Console (https://console.anthropic.com), add it in Render as `ANTHROPIC_API_KEY`, and optionally set `CLAUDE_MODEL`. Usage is billed per token by Anthropic; at demo volumes it is small. Listing text and other third-party data are passed to the model as data to analyse, with instructions not to follow anything embedded in it.
+
 ## Apify
 
 - Actor: `fayoussef/canada-car-scraper` (AutoTrader.ca, Kijiji, CarGurus.ca).

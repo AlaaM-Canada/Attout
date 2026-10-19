@@ -140,3 +140,8 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; 
 .dist { width: 100%; height: auto; display: block; }
 .reco h2 { font-size: 18px; }
 @media (max-width: 900px) { .results-side { max-width: none; position: static; max-height: none; overflow: visible; } .car-head-photo { flex-basis: 100%; } }
+
+.memo { background: var(--dark2); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.5; }
+.msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; max-width: 85%; }
+.msg.you { background: var(--blue-soft); color: var(--blue-ink); margin-left: auto; }
+.msg.ai { background: var(--page); }

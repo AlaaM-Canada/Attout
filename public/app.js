@@ -139,7 +139,7 @@
         <div class="own-row">${r.own.map((o) => `<div class="own-item"><span class="pill ${srcClass(o.source)}">${esc(o.source)}</span><span class="mono" style="font-weight: 600">${money(o.price)}</span>${o.dealRating ? `<span class="pill green">${esc(o.dealRating)}</span>` : ''}${o.daysOnMarket != null ? `<span class="sub">${o.daysOnMarket} days</span>` : ''}${o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">Open</a>` : ''}</div>`).join('')}</div>
       </section>` : '';
     out.innerHTML = `
-      <div class="banner ${r.source === 'live' ? 'blue' : 'orange'}">${esc(r.sourceLabel)}${when ? ` · ${when}` : ''}${r.cached ? ' · cached, press Refresh for a new search' : ''}</div>
+      <div class="banner ${r.source === 'live' ? 'blue' : 'orange'}">${esc(r.sourceLabel)}${when ? ` · ${when}` : ''}${r.cached ? ' · cached, press Refresh for a new search' : ''}${r.aiRead ? ' · listings read by AI' : (r.aiError ? ' · AI reading failed, rules used' : '')}</div>
       ${r.modeNote ? `<div class="banner orange" style="margin-top: 10px">${esc(r.modeNote)}</div>` : ''}
       <div class="results">
         <div class="results-main">
@@ -169,6 +169,7 @@
               <div class="tile"><span>Margin</span><span class="big">${money((rec.verdict === 'keep' ? s.askingPrice : rec.listAt) - (car.totalCost || 0))}</span><span>${car.totalCost ? 'after all costs' : 'no cost entered'}</span></div>
             </div>
             <div style="font-size: 14px; line-height: 1.5">${esc(rec.reason)}</div>
+            ${config.aiAvailable && canAct ? `<div id="memo"><button class="btn secondary small" id="btn-memo" style="background: var(--dark2); color: #FFF; border-color: #FFF">Write the memo and listing copy with AI</button></div>` : ''}
             ${canAct ? `<div class="row" style="gap: 8px">
               ${rec.verdict === 'raise' || rec.verdict === 'lower' ? `<button class="btn small" id="btn-apply" style="background: var(--blue)">${actionLabel}</button>` : ''}
               <button class="btn secondary small" id="btn-custom" style="background: var(--dark2); color: #FFF; border-color: #FFF">Other price</button>
@@ -184,6 +185,17 @@
       </div>`;
     out.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { state.mode = b.dataset.mode; runCheck(car, 'cached', b.dataset.mode); }));
     out.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderResult(car, r); }));
+    const memoBtn = document.getElementById('btn-memo');
+    if (memoBtn) memoBtn.addEventListener('click', async () => {
+      const box = document.getElementById('memo');
+      box.innerHTML = '<div style="font-size: 14px"><span class="spinner" style="border-top-color:#FFF"></span>Claude is reading the comparables and writing…</div>';
+      try {
+        const m = await api(`/inventory/${car.id}/memo`, { method: 'POST', body: JSON.stringify({ mode: r.mode }) });
+        box.innerHTML = `<div class="memo"><div class="label" style="color:#B8B8B8">AI pricing memo</div><div style="white-space: pre-line">${esc(m.memo)}</div>
+          <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing headline</div><div style="font-weight: 600">${esc(m.headline)}</div>
+          <div class="label" style="color:#B8B8B8; margin-top: 8px">Listing description</div><div style="white-space: pre-line">${esc(m.description)}</div></div>`;
+      } catch (e) { box.innerHTML = `<div class="banner orange">${esc(e.message)}</div>`; }
+    });
     if (canAct) {
       const ap = document.getElementById('btn-apply');
       if (ap) ap.addEventListener('click', () => applyPrice(car, rec.listAt, `Market check: median ${money(s.median)}, ${s.used} comparables`));
@@ -314,6 +326,29 @@
       <tbody>${rows.length ? rows.map((r) => `<tr><td class="mono" style="font-size: 13px; white-space: nowrap">${esc(new Date(r.at).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' }))}</td><td>${esc(r.user)}</td><td><strong>${esc(r.action)}</strong></td><td>${esc(r.module)}</td><td>${esc(r.target || '')}</td><td>${esc(r.detail || '')}</td></tr>`).join('') : '<tr><td colspan="6" class="sub">Nothing yet. Run a market check to see entries here.</td></tr>'}</tbody></table></div>`;
   }
 
+  // ---------- Assistant ----------
+  const chat = [];
+  async function renderAssistant() {
+    setNav('assistant');
+    main.innerHTML = `<div><h1>Assistant</h1><div class="sub">Ask about the stock, prices, margins and what happened recently. Answers come from the inventory, market checks and the audit log.</div></div>
+      ${config.aiAvailable ? '' : '<div class="banner orange">AI is not configured. Add ANTHROPIC_API_KEY in Render to switch it on.</div>'}
+      <div class="chips">${['Which cars are over 60 days in stock?', 'Which car has the smallest margin?', 'What changed this week?', 'Which cars are priced above the market?'].map((q) => `<button class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+      <div class="card" id="chat" style="min-height: 200px">${chat.length ? '' : '<div class="sub">No questions yet.</div>'}</div>
+      <form class="row" id="qform" style="align-items: flex-end"><label class="field" style="flex: 1 1 320px">Your question<input class="input" name="q" type="text" placeholder="For example: which cars should I reprice this week?" ${config.aiAvailable ? '' : 'disabled'}></label><button class="btn" type="submit" ${config.aiAvailable ? '' : 'disabled'}>Ask</button></form>`;
+    const box = document.getElementById('chat');
+    const draw = () => { box.innerHTML = chat.map((m) => `<div class="msg ${m.who}"><div class="label">${m.who === 'you' ? 'You' : 'Assistant'}</div><div style="white-space: pre-line">${esc(m.text)}</div></div>`).join('') || '<div class="sub">No questions yet.</div>'; box.scrollTop = box.scrollHeight; };
+    draw();
+    const send = async (q) => {
+      if (!q) return;
+      chat.push({ who: 'you', text: q }); chat.push({ who: 'ai', text: '…' }); draw();
+      try { const r = await api('/assistant', { method: 'POST', body: JSON.stringify({ question: q }) }); chat[chat.length - 1].text = r.answer; }
+      catch (e) { chat[chat.length - 1].text = 'Error: ' + e.message; }
+      draw();
+    };
+    document.getElementById('qform').addEventListener('submit', (e) => { e.preventDefault(); const q = e.target.q.value.trim(); e.target.q.value = ''; send(q); });
+    main.querySelectorAll('[data-q]').forEach((b) => b.addEventListener('click', () => send(b.dataset.q)));
+  }
+
   // ---------- Router ----------
   async function route() {
     const h = location.hash || '#/inventory';
@@ -321,6 +356,7 @@
     try {
       if (m) await renderCar(decodeURIComponent(m[1]));
       else if (h.startsWith('#/market')) await renderMarket(h.split('?')[1] || '');
+      else if (h.startsWith('#/assistant')) await renderAssistant();
       else if (h.startsWith('#/audit')) await renderAudit();
       else await renderInventory();
     } catch (e) { main.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
