@@ -87,6 +87,6 @@ src/adapters/apify.js  Live source (swap this for a licensed provider)
 src/adapters/sample.js Bundled fallback data
 src/store.js           JSON-file storage
 public/                Frontend (plain HTML, CSS, JS)
-data/inventory.json    Seed inventory
+data/inventory.json    Inventory (starts empty; filled by "Refresh from AutoTrader")
 test/                  Unit tests
 ```

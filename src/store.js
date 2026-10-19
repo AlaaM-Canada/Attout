@@ -33,6 +33,7 @@ const store = {
   inventory: {
     all() { return readJson('inventory.json', []); },
     get(id) { return this.all().find((c) => c.id === id) || null; },
+    remove(id) { writeJson('inventory.json', this.all().filter((c) => c.id !== id)); },
     save(car) {
       const all = this.all();
       const i = all.findIndex((c) => c.id === car.id);

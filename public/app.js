@@ -59,6 +59,7 @@
         <button class="btn" id="btn-import" ${config.liveAvailable ? '' : 'disabled title="Live search is off"'}>Refresh from AutoTrader</button></div>
       </div>
       <div id="import-status"></div>
+      ${cars.length ? '' : `<div class="empty">No cars yet. ${config.liveAvailable ? 'Click <strong>Refresh from AutoTrader</strong> to load the dealership\'s current listings.' : 'Live search is off, so nothing can be loaded here.'}</div>`}
       <div class="grid grid-3">${cars.map((c) => `
         <a class="card car-card" href="#/car/${esc(c.id)}">
           <div class="photo">${c.image ? `<img src="${esc(c.image)}" alt="">` : 'No photo yet'}</div>
@@ -116,11 +117,16 @@
         <div class="row between">
           <div><h2>Market check</h2><div class="sub">Finds similar cars for sale within 100 km and matches them on trim, body style and features.</div></div>
           <div class="row"><button class="btn" id="btn-check">Search the market</button><button class="btn secondary" id="btn-refresh" title="Ignore cached results and search again">Refresh</button>
-          <a class="btn secondary" style="text-decoration: none; display: inline-flex; align-items: center" href="#/market?from=${esc(car.id)}">Edit specs and search</a></div>
+          <a class="btn secondary" style="text-decoration: none; display: inline-flex; align-items: center" href="#/market?from=${esc(car.id)}">Edit specs and search</a>
+          <button class="btn danger small" id="btn-remove" title="Remove this car from the inventory">Remove</button></div>
         </div>
         <div id="result"></div>
       </section>`;
     renderOffers(car);
+    document.getElementById('btn-remove').addEventListener('click', async () => {
+      if (!window.confirm(`Remove ${carTitle(car)} from the inventory?`)) return;
+      try { await api('/inventory/' + car.id, { method: 'DELETE' }); toast('Car removed.'); location.hash = '#/inventory'; } catch (e) { toast(e.message); }
+    });
     document.getElementById('btn-check').addEventListener('click', () => runCheck(car, false));
     document.getElementById('btn-refresh').addEventListener('click', () => runCheck(car, true));
     if (state.result && state.result.car && state.result.car.id === car.id) renderResult(car, state.result);

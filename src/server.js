@@ -169,6 +169,14 @@ app.post('/api/assistant', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.delete('/api/inventory/:id', (req, res) => {
+  const c = store.inventory.get(req.params.id);
+  if (!c) return res.status(404).json({ error: 'Car not found' });
+  store.inventory.remove(c.id);
+  store.audit.add({ action: 'Car removed from inventory', module: 'Inventory', target: `${c.year} ${c.make} ${c.model}` });
+  res.json({ ok: true });
+});
+
 app.get('/api/audit', (req, res) => res.json(store.audit.all()));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, live: market.liveAvailable() }));
