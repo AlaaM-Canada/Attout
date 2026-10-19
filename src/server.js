@@ -9,7 +9,13 @@ const jobs = require('./jobs');
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Every deploy gets a new build id, so browsers never keep an old app.js after a redeploy.
+const BUILD = (process.env.RENDER_GIT_COMMIT || '').slice(0, 10) || String(Date.now());
+const PUBLIC = path.join(__dirname, '..', 'public');
+const indexHtml = () => require('fs').readFileSync(path.join(PUBLIC, 'index.html'), 'utf8').replace(/\/(app\.js|styles\.css)"/g, '/$1?v=' + BUILD + '"');
+app.get(['/', '/index.html'], (req, res) => { res.set('Cache-Control', 'no-cache'); res.type('html').send(indexHtml()); });
+app.use(express.static(PUBLIC, { index: false, etag: true, setHeaders: (res, p) => { if (/\.(js|css)$/.test(p)) res.set('Cache-Control', 'no-cache'); } }));
 
 const DEALER = {
   name: process.env.DEALER_NAME || 'Canadian Fine Motors',
@@ -185,7 +191,7 @@ app.get('/api/audit', (req, res) => res.json(store.audit.all()));
 
 app.get('/api/health', (req, res) => res.json({ ok: true, live: market.liveAvailable() }));
 
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
+app.get('*', (req, res) => { res.set('Cache-Control', 'no-cache'); res.type('html').send(indexHtml()); });
 
 const port = Number(process.env.PORT || 3000);
 if (require.main === module) {
