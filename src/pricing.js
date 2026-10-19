@@ -71,7 +71,9 @@ function keyTokens(car) {
 // Match level: exact | close | similar | different, with reasons the user can read.
 function classify(car, l) {
   const carText = `${car.trim || ''} ${car.bodyStyle || ''}`;
-  const listText = `${l.trim || ''} ${l.title || ''} ${l.headline || ''} ${l.body || ''}`;
+  // Model words beyond the car's own model name count as a variant ("A4 allroad", "Cayenne Coupe").
+  const carModel = tokens(car.model), listModelExtra = tokens(l.model).filter((t) => !carModel.includes(t) && !tokens(car.make).includes(t));
+  const listText = `${l.trim || ''} ${listModelExtra.join(' ')} ${l.title || ''} ${l.headline || ''} ${l.body || ''}`;
   const reasons = [];
   const carBody = bodyOf(carText), listBody = bodyOf(listText);
   if (carBody !== -1 && listBody !== -1 && carBody !== listBody) return { level: 'different', reasons: ['different body style'] };
@@ -121,7 +123,10 @@ function fmt(n) { return Number(n || 0).toLocaleString('en-CA'); }
 
 const MODES = { exact: ['exact'], close: ['exact', 'close'], broad: ['exact', 'close', 'similar'] };
 
-function analyze(car, listings, modeIn) {
+function analyze(car, listingsIn, modeIn) {
+  // The dealer's own listings are shown separately and never compared against themselves.
+  const own = listingsIn.filter((l) => l.isOwn);
+  const listings = listingsIn.filter((l) => !l.isOwn);
   const rows = listings.map((l) => {
     const c = classify(car, l);
     const a = adjust(car, l);
@@ -145,20 +150,36 @@ function analyze(car, listings, modeIn) {
   const med = median(eqs);
   const lo = eqs.length ? Math.min.apply(null, eqs) : 0, hi = eqs.length ? Math.max.apply(null, eqs) : 0;
   const ask = car.listPrice || 0, cost = car.totalCost || 0;
-  const listAt = round50(med * (1 - RATES.beatMarketPct / 100));
+  let listAt = round50(med * (1 - RATES.beatMarketPct / 100));
   const floor = Math.max(cost + RATES.minMargin, round50(med * (1 - RATES.floorPct / 100)));
+  let limited = false;
+  if (cost && listAt < floor) { listAt = floor; limited = true; }
   const margin = listAt - cost;
   const pct = med ? Math.round((ask - med) / med * 100) : 0;
   const cuts = used.filter((r) => r.priceDrop).length;
   const bySource = {};
   rows.forEach((r) => { bySource[r.source] = (bySource[r.source] || 0) + 1; });
   const avgDom = used.filter((r) => r.daysOnMarket != null).map((r) => r.daysOnMarket);
-  let position = 'in line', reason;
-  if (!used.length) reason = 'No comparable listings were found for this variant. Widen the match or check the trim spelling.';
-  else if (!ask) reason = 'Enter a list price to see where it sits against the market.';
-  else if (pct > 2) { position = 'above'; reason = `Buyers compare prices online before they visit. At ${pct}% above the median of ${used.length} comparable cars, this car gets fewer enquiries. Listing at $${fmt(listAt)} puts it just under the median while keeping $${fmt(margin)} of margin.${cuts ? ` ${cuts} seller${cuts > 1 ? 's' : ''} cut their price recently, so waiting is unlikely to help.` : ''}`; }
-  else if (pct < -2) { position = 'below'; reason = `The car is priced ${Math.abs(pct)}% below the market. It could go to $${fmt(listAt)} and still sit under the median, adding $${fmt(listAt - ask)} of margin.`; }
-  else reason = `The price is in line with the market. Listing at $${fmt(listAt)} keeps it just under the median; the advantages are what make a buyer pick this car over the others.`;
+  // Where the dealer's price ranks among the comparables (1 = cheapest).
+  const rank = ask ? eqs.filter((v) => v < ask).length + 1 : null;
+  const isListed = own.length > 0;
+  const ownDays = own.map((o) => o.daysOnMarket).filter((d) => d != null);
+  const listedFor = ownDays.length ? Math.max.apply(null, ownDays) : null;
+  let position = 'in line', verdict = 'keep', reason;
+  if (!used.length) { verdict = 'none'; reason = 'No comparable listings were found for this variant. Widen the match or check the trim spelling.'; }
+  else if (!ask) { verdict = 'none'; reason = 'Enter a list price to see where it sits against the market.'; }
+  else if (pct > 2 && listAt >= ask) {
+    position = 'above'; verdict = 'keep';
+    reason = `The market median is ${pct}% below this price, but going lower would leave less than the $${fmt(RATES.minMargin)} minimum margin over the $${fmt(cost)} cost. Keep the price and sell on the advantages below, or accept a smaller margin with "Other price".`;
+  } else if (pct > 2) {
+    position = 'above'; verdict = 'lower';
+    reason = `${isListed ? 'The car is already listed' : 'This price is'} ${pct}% above the median of ${used.length} comparable cars${rank ? `, ranking ${rank} of ${used.length + 1} on price` : ''}. Buyers compare online before they visit, so cars above the pack get fewer enquiries${listedFor != null && listedFor > 21 ? `, which fits ${listedFor} days listed without a sale` : ''}. Lowering to $${fmt(listAt)} puts it just under the median and keeps $${fmt(margin)} of margin.${cuts ? ` ${cuts} seller${cuts > 1 ? 's' : ''} cut their price recently, so waiting is unlikely to help.` : ''}`;
+  } else if (pct < -2) {
+    position = 'below'; verdict = 'raise';
+    reason = `${isListed ? 'The car is already listed' : 'This price is'} ${Math.abs(pct)}% below the median${rank === 1 ? ' and is the cheapest of the comparables' : (rank ? `, ranking ${rank} of ${used.length + 1} on price` : '')}. ${listedFor != null && listedFor <= 21 ? `After ${listedFor} days` : 'At this price'} the money is being left on the table: it could go to $${fmt(listAt)}, still under the median, for $${fmt(listAt - ask)} more margin. If the goal is a fast sale, keep the price but do not stack offers on top of it.`;
+  } else {
+    reason = `${isListed ? 'The car is listed' : 'This price is'} in line with the market median${rank ? `, ranking ${rank} of ${used.length + 1} on price` : ''}. Keep the price; the advantages below and a strong first photo are what make a buyer pick this car over the others.${listedFor != null && listedFor > 30 ? ` After ${listedFor} days listed, consider an offer rather than a price cut.` : ''}`;
+  }
   const advantages = FEATURES.filter((f) => (car.features || {})[f.key]).map((f) => {
     const n = used.filter((r) => r.theirFeatures[f.key] === true).length;
     return n <= used.length / 2 ? { label: f.label, note: n ? `only ${n} of ${used.length} comparables mention it` : 'none of the comparables mention it' } : null;
@@ -174,8 +195,9 @@ function analyze(car, listings, modeIn) {
   }
   return {
     mode, modeNote, counts,
-    stats: { median: med, low: lo, high: hi, used: used.length, excluded: rows.length - used.length, total: rows.length, bySource, askingPrice: ask, pctVsMedian: pct, position, priceCuts: cuts, avgDaysOnMarket: avgDom.length ? Math.round(avgDom.reduce((a, b) => a + b, 0) / avgDom.length) : null },
-    recommendation: { listAt, floor, margin, reason },
+    stats: { median: med, low: lo, high: hi, used: used.length, excluded: rows.length - used.length, total: rows.length, bySource, askingPrice: ask, pctVsMedian: pct, position, rank, priceCuts: cuts, avgDaysOnMarket: avgDom.length ? Math.round(avgDom.reduce((a, b) => a + b, 0) / avgDom.length) : null },
+    recommendation: { listAt, floor, margin, reason, verdict, isListed, listedFor, limited },
+    own, points: eqs.slice().sort((a, b) => a - b),
     advantages, buckets,
     listings: rows.sort((a, b) => {
       const order = { exact: 0, close: 1, similar: 2, different: 3 };

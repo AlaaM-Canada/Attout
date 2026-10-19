@@ -75,3 +75,23 @@ test('mode widens automatically when too few exact matches', async () => {
   assert.ok(a.stats.used >= 3);
   assert.strictEqual(a.buckets.length, 6);
 });
+
+test('A4 allroad is a different variant of an A4 sedan, even when only the model field says so', () => {
+  const a4 = { year: 2017, make: 'Audi', model: 'A4', trim: '2.0 Technik Quattro', bodyStyle: 'Sedan', km: 216399, features: {} };
+  assert.strictEqual(pricing.classify(a4, { model: 'A4 allroad', trim: 'Technik', title: '2017 Audi A4 allroad', headline: '' }).level, 'different');
+  assert.strictEqual(pricing.classify(a4, { model: 'A4', trim: 'Technik quattro', title: '2017 Audi A4 Technik', headline: '' }).level, 'close');
+  assert.strictEqual(pricing.classify(a4, { model: 'A4', trim: '2.0T quattro Technik', title: '2017 Audi A4 Sedan 2.0 Technik', headline: '' }).level, 'exact');
+});
+
+test('own listings are separated and the verdict reflects the current price', async () => {
+  const a4 = { year: 2017, make: 'Audi', model: 'A4', trim: '2.0 Technik Quattro', bodyStyle: 'Sedan', km: 216399, listPrice: 8888, totalCost: 7750, features: {} };
+  const r = await sample.search(a4);
+  const own = { id: 'own', source: 'AutoTrader.ca', title: '2017 Audi A4', trim: 'Technik', model: 'A4', price: 8888, km: 216399, year: 2017, seller: 'Canadian Fine Motors Inc', daysOnMarket: 11, isOwn: true };
+  const a = pricing.analyze(a4, r.listings.concat([own]), 'close');
+  assert.strictEqual(a.own.length, 1);
+  assert.strictEqual(a.stats.total, r.listings.length);
+  assert.strictEqual(a.recommendation.isListed, true);
+  assert.strictEqual(a.recommendation.listedFor, 11);
+  assert.ok(['raise', 'lower', 'keep'].includes(a.recommendation.verdict));
+  assert.ok(a.stats.rank >= 1);
+});

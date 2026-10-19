@@ -64,27 +64,27 @@
     try { car = await api('/inventory/' + id); } catch (e) { main.innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
     const feats = config.features.filter((f) => (car.features || {})[f.key]).map((f) => f.label);
     main.innerHTML = `
-      <a href="#/inventory" class="btn secondary small" style="align-self: flex-start; text-decoration: none; display: inline-flex; align-items: center">Back to inventory</a>
-      <div class="inv-head">
-        <div>
-          <h1>${esc(carTitle(car))}</h1>
-          <div class="sub">Stock ${esc(car.stockNumber || '')} · ${num(car.km)} km · ${esc(car.drivetrain || '')} · ${esc(car.colour || '')}${car.bodyStyle ? ` · ${esc(car.bodyStyle)}` : ''} · bought at ${esc(car.source || '')} · at ${esc(car.location || '')}</div>
+      <div class="crumbs"><a href="#/inventory">Inventory</a><span>›</span><span>${esc(carTitle(car))}</span></div>
+      <section class="card car-head">
+        <div class="car-head-photo">${car.image ? `<img src="${esc(car.image)}" alt="">` : 'No photo yet'}</div>
+        <div class="car-head-body">
+          <div class="row between" style="align-items: flex-start">
+            <div><h1>${esc(carTitle(car))}</h1>
+            <div class="sub">Stock ${esc(car.stockNumber || '')} · ${num(car.km)} km · ${esc(car.drivetrain || '')} · ${esc(car.colour || '')}${car.bodyStyle ? ` · ${esc(car.bodyStyle)}` : ''} · bought at ${esc(car.source || '')} · ${esc(car.location || '')}</div></div>
+            ${agePill(car.daysInStock)}
+          </div>
+          <div class="kv">
+            <div><div class="label">List price</div><div class="value" id="cur-price">${money(car.listPrice)}</div></div>
+            <div><div class="label">Total cost</div><div class="value">${money(car.totalCost)}</div></div>
+            <div><div class="label">Margin at list</div><div class="value" id="cur-margin">${money(car.listPrice - car.totalCost)}</div></div>
+          </div>
+          <div class="row" style="gap: 6px">${feats.length ? feats.map((f) => `<span class="pill">${esc(f)}</span>`).join('') : '<span class="sub">No features recorded</span>'}</div>
+          <div class="row" style="gap: 8px; align-items: center"><span class="label">Offers:</span><span class="offers" id="offers"></span></div>
         </div>
-        ${agePill(car.daysInStock)}
-      </div>
-      <div class="grid grid-stats">
-        <div class="stat"><div class="label">List price</div><div class="value" id="cur-price">${money(car.listPrice)}</div></div>
-        <div class="stat"><div class="label">Total cost</div><div class="value">${money(car.totalCost)}</div><div class="label">purchase, fees, transport, reconditioning</div></div>
-        <div class="stat"><div class="label">Margin at list price</div><div class="value" id="cur-margin">${money(car.listPrice - car.totalCost)}</div></div>
-        <div class="stat"><div class="label">Features</div><div style="font-size: 14px">${feats.length ? esc(feats.join(', ')) : 'None recorded'}</div></div>
-      </div>
-      <section class="card">
-        <div class="row between"><div><h2>Current offers</h2><div class="sub">Shown with the listing, next to the price.</div></div></div>
-        <div class="offers" id="offers"></div>
       </section>
       <section class="card">
         <div class="row between">
-          <div><h2>Market check</h2><div class="sub">Searches AutoTrader.ca, Kijiji and CarGurus.ca within 100 km for the same make and model, then matches on trim, body style and features.</div></div>
+          <div><h2>Market check</h2><div class="sub">AutoTrader.ca, Kijiji and CarGurus.ca within 100 km, matched on trim, body style and features.</div></div>
           <div class="row"><button class="btn" id="btn-check">Search the market</button><button class="btn secondary" id="btn-refresh" title="Ignore cached results and search again">Refresh</button>
           <a class="btn secondary" style="text-decoration: none; display: inline-flex; align-items: center" href="#/market?from=${esc(car.id)}">Edit specs and search</a></div>
         </div>
@@ -126,64 +126,92 @@
     const s = r.stats, rec = r.recommendation;
     const when = r.fetchedAt ? new Date(r.fetchedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' }) : '';
     const srcs = Object.keys(s.bySource).map((k) => `<span class="pill ${srcClass(k)}">${esc(k)} · ${s.bySource[k]}</span>`).join('');
-    const posCls = s.position === 'above' ? 'color: var(--red-ink)' : (s.position === 'below' ? 'color: var(--blue-ink)' : '');
-    const posLabel = !s.askingPrice ? 'No list price' : (s.position === 'above' ? `${s.pctVsMedian}% above the market median` : (s.position === 'below' ? `${Math.abs(s.pctVsMedian)}% below the market median` : 'In line with the market median'));
-    const maxB = Math.max.apply(null, r.buckets.map((b) => b.count).concat([1]));
-    const dist = r.buckets.length ? `<div class="hist">${r.buckets.map((b) => `<div class="hbar" title="${b.count} between ${money(b.from)} and ${money(b.to)}"><div class="hfill" style="height:${Math.max(4, Math.round(b.count / maxB * 100))}%"></div><div class="hlabel">${b.count}</div></div>`).join('')}</div>
-      <div class="row between" style="font-size: 12px; color: var(--muted)"><span>${money(s.low)}</span><span>${money(s.high)}</span></div>
-      <div class="markers">${marker('Median', s.median, s, 'med')}${marker('List at', rec.listAt, s, 'rec')}${s.askingPrice ? marker('Yours', s.askingPrice, s, s.position === 'above' ? 'me' : 'rec') : ''}</div>` : '<div class="sub">No comparables in this set.</div>';
+    const posCls = s.position === 'above' ? 'var(--red-ink)' : (s.position === 'below' ? 'var(--blue-ink)' : 'var(--ink)');
+    const posLabel = !s.askingPrice ? 'No list price' : (s.position === 'above' ? `${s.pctVsMedian}% above the median` : (s.position === 'below' ? `${Math.abs(s.pctVsMedian)}% below the median` : 'In line with the median'));
     const modeChips = MODES.map((m) => `<button class="chip ${r.mode === m[0] ? 'on' : ''}" data-mode="${m[0]}">${m[1]}</button>`).join('');
     const filterChips = [['all', `All · ${r.listings.length}`]].concat(Object.keys(LEVELS).map((k) => [k, `${LEVELS[k][0]} · ${r.counts[k]}`])).map((f) => `<button class="chip ${state.filter === f[0] ? 'on' : ''}" data-filter="${f[0]}">${f[1]}</button>`).join('');
     const shown = r.listings.filter((l) => state.filter === 'all' || l.level === state.filter);
     const canAct = !!car.id;
+    const verdictTitle = { raise: 'Room to raise the price', lower: 'Lower the price to move it', keep: 'Keep the price', none: 'No recommendation yet' }[rec.verdict];
+    const actionLabel = { raise: `Raise to ${money(rec.listAt)}`, lower: `Lower to ${money(rec.listAt)}`, keep: `Keep ${money(s.askingPrice)}`, none: '' }[rec.verdict];
+    const ownStrip = r.own.length ? `<section class="own">
+        <div class="row between"><div><strong>Your listing on the market</strong><span class="sub"> · ${r.own.length} platform${r.own.length > 1 ? 's' : ''}${rec.listedFor != null ? ` · listed ${rec.listedFor} days` : ''}${s.rank ? ` · ranks ${s.rank} of ${s.used + 1} on price` : ''}</span></div></div>
+        <div class="own-row">${r.own.map((o) => `<div class="own-item"><span class="pill ${srcClass(o.source)}">${esc(o.source)}</span><span class="mono" style="font-weight: 600">${money(o.price)}</span>${o.dealRating ? `<span class="pill green">${esc(o.dealRating)}</span>` : ''}${o.daysOnMarket != null ? `<span class="sub">${o.daysOnMarket} days</span>` : ''}${o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">Open</a>` : ''}</div>`).join('')}</div>
+      </section>` : '';
     out.innerHTML = `
       <div class="banner ${r.source === 'live' ? 'blue' : 'orange'}">${esc(r.sourceLabel)}${when ? ` · ${when}` : ''}${r.cached ? ' · cached, press Refresh for a new search' : ''}</div>
-      <div class="row between" style="margin-top: 12px"><div class="srcs">${srcs}</div><div class="row" style="gap: 6px"><span class="label">Statistics use:</span>${modeChips}</div></div>
       ${r.modeNote ? `<div class="banner orange" style="margin-top: 10px">${esc(r.modeNote)}</div>` : ''}
       <div class="results">
         <div class="results-main">
-          <div class="row between"><h2>Similar cars on the market</h2></div>
+          ${ownStrip}
+          <div class="row between"><h2>Similar cars on the market</h2><div class="srcs">${srcs}</div></div>
           <div class="chips" id="filters">${filterChips}</div>
           <div class="listings">${shown.length ? shown.map((l) => listingCard(l)).join('') : '<div class="empty">No listings at this level.</div>'}</div>
         </div>
         <aside class="results-side">
-          <div class="stat"><div class="label">Market median, adjusted to this car</div><div class="value">${money(s.median)}</div><div class="label">${s.used} comparables · range ${money(s.low)} to ${money(s.high)}</div></div>
-          <div class="stat"><div class="label">Your list price</div><div class="value">${money(s.askingPrice)}</div><div class="label" style="font-weight: 500; ${posCls}">${posLabel}</div></div>
-          <div class="reco">
-            <h2>Recommendation</h2>
-            <div class="tiles">
-              <div class="tile primary"><span>List at</span><span class="big">${money(rec.listAt)}</span><span>just under the median</span></div>
-              <div class="tile"><span>Floor</span><span class="big">${money(rec.floor)}</span><span>lowest to accept</span></div>
-              <div class="tile"><span>Margin at list</span><span class="big">${money(rec.margin)}</span><span>${car.totalCost ? (rec.margin < 0 ? 'below cost' : 'after all costs') : 'no cost entered'}</span></div>
+          <div class="side-scroll">
+          <div class="card compact">
+            <h2>Market position</h2>
+            <div class="row" style="gap: 6px"><span class="label">Compare with:</span>${modeChips}</div>
+            <div class="kv kv-2">
+              <div><div class="label">Market median</div><div class="value">${money(s.median)}</div><div class="label">${s.used} comparables, adjusted to this car</div></div>
+              <div><div class="label">${rec.isListed ? 'Your current price' : 'Your list price'}</div><div class="value">${money(s.askingPrice)}</div><div class="label" style="font-weight: 600; color: ${posCls}">${posLabel}</div></div>
             </div>
-            <div style="font-size: 14px">${esc(rec.reason)}</div>
-            ${canAct ? `<div class="row">
-              <button class="btn small" id="btn-apply" style="background: var(--blue)">Set price to ${money(rec.listAt)}</button>
+            ${distribution(r)}
+            <div class="sub">${s.priceCuts} recent price cut${s.priceCuts === 1 ? '' : 's'}${s.avgDaysOnMarket != null ? ` · comparables average ${s.avgDaysOnMarket} days on market` : ''}</div>
+          </div>
+          <div class="reco">
+            <div class="label" style="color: #B8B8B8">Recommendation</div>
+            <h2>${verdictTitle}</h2>
+            <div class="tiles">
+              <div class="tile ${rec.verdict === 'keep' ? '' : 'primary'}"><span>${rec.verdict === 'keep' ? 'Keep at' : 'Target price'}</span><span class="big">${money(rec.verdict === 'keep' ? s.askingPrice : rec.listAt)}</span><span>${rec.verdict === 'keep' ? 'no change' : (rec.limited ? 'held at your minimum margin' : '2% under the median')}</span></div>
+              <div class="tile"><span>Floor</span><span class="big">${money(rec.floor)}</span><span>lowest to accept</span></div>
+              <div class="tile"><span>Margin</span><span class="big">${money((rec.verdict === 'keep' ? s.askingPrice : rec.listAt) - (car.totalCost || 0))}</span><span>${car.totalCost ? 'after all costs' : 'no cost entered'}</span></div>
+            </div>
+            <div style="font-size: 14px; line-height: 1.5">${esc(rec.reason)}</div>
+            ${canAct ? `<div class="row" style="gap: 8px">
+              ${rec.verdict === 'raise' || rec.verdict === 'lower' ? `<button class="btn small" id="btn-apply" style="background: var(--blue)">${actionLabel}</button>` : ''}
               <button class="btn secondary small" id="btn-custom" style="background: var(--dark2); color: #FFF; border-color: #FFF">Other price</button>
               <button class="btn secondary small" id="btn-offer" style="background: var(--dark2); color: #FFF; border-color: #FFF">Add an offer</button>
             </div><div id="action-form"></div>` : '<div class="sub" style="color:#B8B8B8">Add this car to inventory to apply a price or offer.</div>'}
           </div>
-          <div class="card"><h2>Price distribution</h2><div class="sub">Comparables adjusted to this car's km, year and features.</div>${dist}
-            <div class="sub">Signals: ${s.priceCuts} recent price cut${s.priceCuts === 1 ? '' : 's'}${s.avgDaysOnMarket != null ? `, average ${s.avgDaysOnMarket} days on market` : ''}.</div></div>
-          <div class="card"><h2>Advantages to highlight</h2>
+          <div class="card compact"><h2>Advantages to highlight</h2>
             ${r.advantages.length ? r.advantages.map((a) => `<div class="row between" style="padding: 8px 10px; background: var(--page); border-radius: 8px; font-size: 14px"><strong>${esc(a.label)}</strong><span class="sub">${esc(a.note)}</span></div>`).join('') : '<div class="sub">Nothing stands out. Record the car\'s features to see where it beats the comparables.</div>'}
             <div class="sub">Lead with these in the photos and the first line of the listing.</div></div>
-          <div class="sub">Adjusted price = listing price ± ${r.rates.perKm * 100}¢ per km, ${money(r.rates.perYear)} per model year, and feature differences.</div>
+          <div class="sub" style="padding: 0 4px">Adjusted price = listing price ± ${r.rates.perKm * 100}¢ per km, ${money(r.rates.perYear)} per model year, and feature differences.</div>
+          </div>
         </aside>
       </div>`;
     out.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { state.mode = b.dataset.mode; runCheck(car, 'cached', b.dataset.mode); }));
     out.querySelectorAll('[data-filter]').forEach((b) => b.addEventListener('click', () => { state.filter = b.dataset.filter; renderResult(car, r); }));
     if (canAct) {
-      document.getElementById('btn-apply').addEventListener('click', () => applyPrice(car, rec.listAt, `Market check: median ${money(s.median)}, ${s.used} comparables`));
+      const ap = document.getElementById('btn-apply');
+      if (ap) ap.addEventListener('click', () => applyPrice(car, rec.listAt, `Market check: median ${money(s.median)}, ${s.used} comparables`));
       document.getElementById('btn-custom').addEventListener('click', () => priceForm(car, rec.listAt));
       document.getElementById('btn-offer').addEventListener('click', () => offerForm(car));
     }
   }
 
-  function marker(label, v, s, cls) {
-    const span = (s.high - s.low) || 1;
-    const pct = Math.min(100, Math.max(0, (v - s.low) / span * 100));
-    return `<div class="marker ${cls}" style="left:${pct}%"><span>${label} ${money(v)}</span></div>`;
+  // Price distribution: every comparable as a dot on one scale, with the median, target and the dealer's price marked.
+  function distribution(r) {
+    const s = r.stats, pts = r.points || [];
+    if (!pts.length) return '<div class="sub">No comparables in this set.</div>';
+    const W = 320, H = 96, padL = 8, padR = 8, base = 44;
+    const lo = Math.min(s.low, s.askingPrice || s.low), hi = Math.max(s.high, s.askingPrice || s.high), span = (hi - lo) || 1;
+    const x = (v) => padL + (v - lo) / span * (W - padL - padR);
+    // Stack dots that land close together.
+    const cols = {}, dots = pts.map((v) => { const k = Math.round(x(v) / 9); cols[k] = (cols[k] || 0) + 1; return `<circle cx="${x(v).toFixed(1)}" cy="${base - 6 - (cols[k] - 1) * 9}" r="3.6" fill="#8A8A88"/>`; }).join('');
+    const q1 = pts[Math.floor((pts.length - 1) * 0.25)], q3 = pts[Math.floor((pts.length - 1) * 0.75)];
+    const mark = (v, color, label, dy, bold) => `<line x1="${x(v).toFixed(1)}" x2="${x(v).toFixed(1)}" y1="${base - 42}" y2="${base + 4}" stroke="${color}" stroke-width="2"/><text x="${x(v).toFixed(1)}" y="${base + dy}" text-anchor="${x(v) < 40 ? 'start' : (x(v) > W - 40 ? 'end' : 'middle')}" font-size="11" font-weight="${bold ? 700 : 500}" fill="${color}">${label} ${money(v)}</text>`;
+    return `<svg class="dist" viewBox="0 0 ${W} ${H}" role="img" aria-label="Price distribution of ${pts.length} comparables">
+      <rect x="${x(q1).toFixed(1)}" y="${base - 10}" width="${Math.max(2, x(q3) - x(q1)).toFixed(1)}" height="8" rx="4" fill="#E3E8F4"/>
+      <line x1="${padL}" x2="${W - padR}" y1="${base}" y2="${base}" stroke="#DCDCDA" stroke-width="2"/>
+      ${dots}
+      ${mark(s.median, '#151515', 'Median', 18, true)}
+      ${s.askingPrice ? mark(s.askingPrice, s.position === 'above' ? '#B4470E' : '#3D62A8', 'You', 34, true) : ''}
+      ${r.recommendation.verdict !== 'keep' && r.recommendation.verdict !== 'none' ? mark(r.recommendation.listAt, '#3D62A8', 'Target', 50, false) : ''}
+    </svg>
+    <div class="row between" style="font-size: 11px; color: var(--muted); margin-top: -4px"><span>${money(s.low)}</span><span>middle half of the market shaded</span><span>${money(s.high)}</span></div>`;
   }
 
   function listingCard(l) {
@@ -303,9 +331,8 @@
     document.getElementById('dealer-name').textContent = config.dealer.name;
     document.getElementById('brand-name').textContent = config.dealer.name;
     document.getElementById('brand-sub').textContent = 'Owner console · ' + config.dealer.city;
-    document.getElementById('source-note').textContent = config.liveAvailable
-      ? 'Live market search is on: AutoTrader.ca, Kijiji and CarGurus.ca via Apify. Results are cached for 6 hours.'
-      : 'Live search is off (no APIFY_TOKEN). Showing bundled sample data.';
+    const note = document.getElementById('source-note');
+    if (config.liveAvailable) note.remove(); else note.textContent = 'Live search is off (no APIFY_TOKEN). Showing bundled sample data.';
     window.addEventListener('hashchange', route);
     route();
   }

@@ -69,7 +69,7 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; 
 .bar-row .price { flex: 0 0 76px; text-align: right; font-family: var(--mono); }
 .listings { display: flex; flex-direction: column; gap: 12px; }
 .listing { display: flex; flex-wrap: wrap; gap: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-.listing.excluded { opacity: 0.6; }
+.listing.excluded { border-style: dashed; background: #FBFBFA; }
 .listing .photo { flex: 0 0 220px; height: 150px; border-radius: 8px; background: var(--soft); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; overflow: hidden; }
 .listing .photo img { width: 100%; height: 100%; object-fit: cover; }
 .listing .body { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -103,7 +103,8 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; 
 
 .results { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-top: 16px; }
 .results-main { flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.results-side { flex: 1 1 300px; max-width: 380px; display: flex; flex-direction: column; gap: 12px; position: sticky; top: 16px; }
+.results-side { flex: 1 1 320px; max-width: 400px; position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.side-scroll { display: flex; flex-direction: column; gap: 12px; }
 .results-side .reco { padding: 16px; gap: 10px; }
 .results-side .reco .tiles { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
 .results-side .reco .tile { padding: 10px; font-size: 12px; }
@@ -120,3 +121,22 @@ label.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; 
 .marker.me span { top: 34px; }
 .marker.rec span { top: 16px; }
 @media (max-width: 900px) { .results-side { max-width: none; position: static; } }
+
+.crumbs { display: flex; gap: 8px; font-size: 14px; color: var(--muted); }
+.crumbs a { color: var(--muted); }
+.car-head { flex-direction: row; flex-wrap: wrap; gap: 20px; }
+.car-head-photo { flex: 0 0 240px; height: 170px; border-radius: 8px; background: var(--soft); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; overflow: hidden; }
+.car-head-photo img { width: 100%; height: 100%; object-fit: cover; }
+.car-head-body { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+.kv .value { font-family: var(--mono); font-size: 24px; font-weight: 500; }
+.kv-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card.compact { padding: 14px; gap: 10px; }
+.card.compact h2 { font-size: 16px; }
+.own { background: var(--green-soft); border: 1px solid #BFD9D0; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; color: var(--green-ink); }
+.own-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.own-item { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; background: #FFFFFF; border-radius: 8px; font-size: 14px; color: var(--ink); }
+.own-item a { font-weight: 600; }
+.dist { width: 100%; height: auto; display: block; }
+.reco h2 { font-size: 18px; }
+@media (max-width: 900px) { .results-side { max-width: none; position: static; max-height: none; overflow: visible; } .car-head-photo { flex-basis: 100%; } }

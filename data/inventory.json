@@ -6,6 +6,7 @@
     "make": "Audi",
     "model": "A4",
     "trim": "2.0 Technik Quattro",
+    "bodyStyle": "Sedan",
     "km": 216399,
     "drivetrain": "AWD",
     "colour": "Black",

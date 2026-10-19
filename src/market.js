@@ -35,8 +35,19 @@ async function fetchListings(car, opts) {
   return { cached: false, fetchedAt: new Date().toISOString(), source: 'sample', sourceLabel: r.sampleNote, listings: r.listings };
 }
 
+function ownMatcher() {
+  const names = [process.env.DEALER_NAME || 'Canadian Fine Motors'].concat((process.env.DEALER_ALIASES || '').split(',')).map((n) => n.trim().toLowerCase()).filter(Boolean);
+  return (l) => {
+    const seller = String(l.seller || '').toLowerCase();
+    if (!seller) return false;
+    return names.some((n) => seller.includes(n) || (n.split(' ').length >= 2 && seller.includes(n.split(' ').slice(0, 2).join(' '))));
+  };
+}
+
 async function check(car, opts) {
   const data = await fetchListings(car, opts);
+  const isOwn = ownMatcher();
+  data.listings.forEach((l) => { l.isOwn = isOwn(l); });
   const analysis = pricing.analyze(car, data.listings, (opts || {}).mode);
   return Object.assign({ car, source: data.source, sourceLabel: data.sourceLabel, cached: data.cached, fetchedAt: data.fetchedAt, error: data.error || null, liveAvailable: liveAvailable() }, analysis);
 }
