@@ -30,7 +30,7 @@ function withDerived(c) {
 }
 
 app.get('/api/config', (req, res) => {
-  res.json({ dealer: DEALER, liveAvailable: market.liveAvailable(), aiAvailable: ai.available(), aiModel: ai.MODEL, features: pricing.FEATURES.map((f) => ({ key: f.key, label: f.label, value: f.value })), rates: pricing.RATES });
+  res.json({ dealer: DEALER, liveAvailable: market.liveAvailable(), websiteAvailable: market.websiteAvailable(), website: market.websiteBase, aiAvailable: ai.available(), aiModel: ai.MODEL, features: pricing.FEATURES.map((f) => ({ key: f.key, label: f.label, value: f.value })), rates: pricing.RATES });
 });
 
 app.get('/api/inventory', (req, res) => res.json(store.inventory.all().map(withDerived)));
@@ -92,6 +92,17 @@ app.post('/api/inventory/import', (req, res) => {
     progress(3, 'Contacting AutoTrader.ca', 'searching');
     const r = await market.importOwnListings({ source: 'autotrader', onProgress: progress });
     store.audit.add({ action: 'Inventory refreshed from AutoTrader.ca', module: 'Inventory', target: `${r.mine} listings`, detail: `${r.added} added, ${r.updated} updated.${r.note ? ' ' + r.note : ''}` });
+    return r;
+  });
+  res.status(202).json({ jobId: job.id });
+});
+
+// Mirror the dealer's own website into the inventory (background job with progress).
+app.post('/api/inventory/import-website', (req, res) => {
+  if (!market.websiteAvailable()) return res.status(503).json({ error: 'No dealer website configured' });
+  const job = jobs.create('import-website', async (progress) => {
+    const r = await market.importFromWebsite({ onProgress: progress });
+    store.audit.add({ action: 'Inventory refreshed from the website', module: 'Inventory', target: `${r.found} cars`, detail: `${r.added} added, ${r.updated} updated${r.delisted ? `, ${r.delisted} no longer listed` : ''}${r.relisted ? `, ${r.relisted} back on the lot` : ''}` });
     return r;
   });
   res.status(202).json({ jobId: job.id });

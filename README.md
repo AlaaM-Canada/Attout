@@ -6,7 +6,7 @@ Pick a car from inventory, search the Canadian market for similar cars, see the 
 
 ## What it does
 
-1. **Inventory** – cards for each car with price, days in stock, cost and current offers.
+1. **Inventory** – every car on the dealer's own website (`Refresh from website`: year/make/model, trim line, body style, km, stock #, VIN, cash and financing price, photo), with cost and current offers. Cars that leave the website are kept but flagged. `Refresh from AutoTrader` additionally pulls the dealer's newest AutoTrader listings (limited by the free Apify plan's 25-result cap).
 2. **Market check** – one click searches the three sites within 100 km of the dealership for the same make and model, model year ±1.
 3. **Matching** – each listing is classified (close match, similar, different variant) and adjusted to the dealer's car: 6¢ per km, $1,200 per model year, and a value per feature the listing has or lacks.
 4. **Statistics** – adjusted market median and range, where the dealer's price sits, recent price cuts, days on market.
@@ -63,7 +63,8 @@ Get a key from the Claude Console (https://console.anthropic.com), add it in Ren
 ## Apify
 
 - Actor: `fayoussef/canada-car-scraper` (AutoTrader.ca, Kijiji, CarGurus.ca).
-- Free plan: 25 results per run and about $5 of monthly credit, plenty for demos.
+- Free plan: 25 results per run and about $5 of monthly credit, plenty for demos. The cap is why "Refresh from AutoTrader" can miss the dealer's cars (it only sees the 25 newest listings nearby); the website refresh has no such limit.
+- Listing links are normalised to the form each site opens today (CarGurus: `cargurus.ca/details/<id>`).
 - Get the token in the Apify Console under **Settings → API & Integrations**.
 
 ## Settings
@@ -72,6 +73,7 @@ Get a key from the Claude Console (https://console.anthropic.com), add it in Ren
 |---|---|---|
 | `APIFY_TOKEN` | – | Enables live search |
 | `DEALER_POSTAL_CODE` | `M1R 2Y5` | Centre of the search |
+| `DEALER_WEBSITE` | `https://canadianfinemotors.ca` | The dealer's website; its `/vehicles/` pages feed the inventory |
 | `SEARCH_RADIUS_KM` | `100` | Search radius |
 | `SEARCH_MAX_RESULTS` | `25` | Listings per search (free plan cap) |
 | `CACHE_HOURS` | `6` | How long results are reused |
@@ -87,6 +89,6 @@ src/adapters/apify.js  Live source (swap this for a licensed provider)
 src/adapters/sample.js Bundled fallback data
 src/store.js           JSON-file storage
 public/                Frontend (plain HTML, CSS, JS)
-data/inventory.json    Inventory (starts empty; filled by "Refresh from AutoTrader")
+data/inventory.json    Inventory (starts empty; filled by "Refresh from website", or "Refresh from AutoTrader")
 test/                  Unit tests
 ```

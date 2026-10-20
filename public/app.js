@@ -46,31 +46,57 @@
   }
 
   // ---------- Inventory ----------
-  let importNote = '';
+  let importNote = '', inventoryFilter = '', showDelisted = false;
   async function renderInventory() {
     setNav('inventory');
     main.innerHTML = '<h1>Inventory</h1><div class="sub">Loading…</div>';
-    const cars = await api('/inventory');
-    const capital = cars.reduce((a, c) => a + c.totalCost, 0);
+    const all = await api('/inventory');
+    const delistedCars = all.filter((c) => c.delisted);
+    const live = all.filter((c) => !c.delisted);
+    const q = inventoryFilter.trim().toLowerCase();
+    const matches = (c) => !q || `${c.year} ${c.make} ${c.model} ${c.trim || ''} ${c.stockNumber || ''} ${c.vin || ''} ${c.bodyStyle || ''} ${c.location || ''}`.toLowerCase().includes(q);
+    const cars = (showDelisted ? all : live).filter(matches);
+    const capital = live.reduce((a, c) => a + c.totalCost, 0);
+    const siteName = (config.website || '').replace(/^https?:\/\//, '');
     main.innerHTML = `
       <div class="inv-head">
         <div><h1>Inventory</h1><div class="sub">Pick a car to check it against the market.</div></div>
-        <div class="row"><div class="stat"><div class="label">Cars in stock</div><div class="value">${cars.length}</div></div>
-        <div class="stat"><div class="label">Capital tied up</div><div class="value">${money(capital)}</div></div>
-        <button class="btn" id="btn-import" ${config.liveAvailable ? '' : 'disabled title="Live search is off"'}>Refresh from AutoTrader</button></div>
+        <div class="row"><div class="stat"><div class="label">Cars on the lot</div><div class="value">${live.length}</div></div>
+        <div class="stat"><div class="label">Capital tied up</div><div class="value">${capital ? money(capital) : '—'}</div></div>
+        ${config.websiteAvailable ? `<button class="btn" id="btn-import-site" title="Reads every car on ${esc(siteName)}">Refresh from website</button>` : ''}
+        <button class="btn ${config.websiteAvailable ? 'secondary' : ''}" id="btn-import" ${config.liveAvailable ? '' : 'disabled title="Live search is off"'}>Refresh from AutoTrader</button></div>
       </div>
       <div id="import-status">${importNote ? `<div class="banner orange">${esc(importNote)}</div>` : ''}</div>
-      ${cars.length ? '' : `<div class="empty">No cars yet. ${config.liveAvailable ? 'Click <strong>Refresh from AutoTrader</strong> to load the dealership\'s current listings.' : 'Live search is off, so nothing can be loaded here.'}</div>`}
+      ${all.length ? `<div class="row between" style="margin: 4px 0 14px"><input class="input" id="inv-filter" placeholder="Filter by make, model, stock # or VIN" value="${esc(inventoryFilter)}" style="max-width: 360px">
+        <span class="sub">${cars.length} of ${showDelisted ? all.length : live.length} shown${delistedCars.length ? ` · <a href="#" id="toggle-delisted">${showDelisted ? 'hide' : 'show'} ${delistedCars.length} no longer on the website</a>` : ''}</span></div>` : ''}
+      ${all.length ? '' : `<div class="empty">No cars yet. ${config.websiteAvailable ? `Click <strong>Refresh from website</strong> to load everything on ${esc(siteName)}.` : (config.liveAvailable ? 'Click <strong>Refresh from AutoTrader</strong> to load the dealership\'s current listings.' : 'Live search is off, so nothing can be loaded here.')}</div>`}
       <div class="grid grid-3">${cars.map((c) => `
         <a class="card car-card" href="#/car/${esc(c.id)}">
           <div class="photo">${c.image ? `<img src="${esc(c.image)}" alt="">` : 'No photo yet'}</div>
           <div class="title" style="font-family: var(--display); font-weight: 600; font-size: 17px">${esc(carTitle(c))}</div>
-          <div class="row"><span class="mono" style="font-size: 22px; font-weight: 500">${money(c.listPrice)}</span>${c.daysFromListing ? `<span class="pill blue">${c.daysInStock} days listed</span>` : agePill(c.daysInStock)}</div>
-          <div class="row" style="gap: 6px"><span class="pill">${num(c.km)} km</span><span class="pill">${esc(c.drivetrain || '')}</span><span class="pill">${esc(c.location || '')}</span></div>
+          <div class="row"><span class="mono" style="font-size: 22px; font-weight: 500">${money(c.listPrice)}</span>${c.delisted ? '<span class="pill">No longer on the website</span>' : (c.daysFromListing ? `<span class="pill blue">${c.daysInStock} days listed</span>` : agePill(c.daysInStock))}</div>
+          <div class="row" style="gap: 6px"><span class="pill">${num(c.km)} km</span>${c.bodyStyle ? `<span class="pill">${esc(c.bodyStyle)}</span>` : ''}${c.drivetrain ? `<span class="pill">${esc(c.drivetrain)}</span>` : ''}<span class="pill">${esc(c.location || '')}</span></div>
           <div class="sub">${c.stockNumber ? `Stock ${esc(c.stockNumber)} · ` : ''}${c.importSource ? `listed on ${esc(c.importSource)}` : `bought at ${esc(c.source || '')}`}${c.totalCost ? ` · cost ${money(c.totalCost)}` : ' · cost not entered'}</div>
           ${(c.offers || []).length ? `<div class="offers">${c.offers.map((o) => `<span class="pill green">${esc(o.label)}</span>`).join('')}</div>` : ''}
         </a>`).join('')}
       </div>`;
+    const filt = document.getElementById('inv-filter');
+    if (filt) filt.addEventListener('input', () => { inventoryFilter = filt.value; const pos = filt.selectionStart; renderInventory().then(() => { const f = document.getElementById('inv-filter'); if (f) { f.focus(); f.setSelectionRange(pos, pos); } }); });
+    const tog = document.getElementById('toggle-delisted');
+    if (tog) tog.addEventListener('click', (e) => { e.preventDefault(); showDelisted = !showDelisted; renderInventory(); });
+    const impSite = document.getElementById('btn-import-site');
+    if (impSite) impSite.addEventListener('click', async () => {
+      impSite.disabled = true;
+      const box = document.getElementById('import-status');
+      box.innerHTML = progressBar(2, 'Refreshing from the website: starting');
+      try {
+        const start = await api('/inventory/import-website', { method: 'POST', body: '{}' });
+        const r = await followJob(start.jobId, box, 'Refreshing from the website');
+        toast(`${r.found} cars on the website: ${r.added} added, ${r.updated} updated${r.delisted ? `, ${r.delisted} no longer listed` : ''}.`);
+        importNote = '';
+        renderInventory();
+      } catch (e) { box.innerHTML = `<div class="banner orange">${esc(e.message)}</div>`; impSite.disabled = false; }
+    });
     const imp = document.getElementById('btn-import');
     if (imp) imp.addEventListener('click', async () => {
       imp.disabled = true;
@@ -102,12 +128,13 @@
         <div class="car-head-body">
           <div class="row between" style="align-items: flex-start">
             <div><h1>${esc(carTitle(car))}</h1>
-            <div class="sub">${car.stockNumber ? `Stock ${esc(car.stockNumber)} · ` : ''}${num(car.km)} km · ${esc(car.drivetrain || '')}${car.colour ? ` · ${esc(car.colour)}` : ''}${car.bodyStyle ? ` · ${esc(car.bodyStyle)}` : ''} · ${car.importSource ? `listed on ${esc(car.importSource)}` : `bought at ${esc(car.source || '')}`} · ${esc(car.location || '')}${car.listingUrl ? ` · <a href="${esc(car.listingUrl)}" target="_blank" rel="noopener">Open listing</a>` : ''}</div>
+            <div class="sub">${[car.stockNumber ? `Stock ${esc(car.stockNumber)}` : '', `${num(car.km)} km`, car.drivetrain ? esc(car.drivetrain) : '', car.colour ? esc(car.colour) : '', car.bodyStyle ? esc(car.bodyStyle) : '', car.transmission ? esc(car.transmission) : '', esc(car.location || '')].filter(Boolean).join(' · ')}</div>
+            <div class="sub" style="margin-top: 2px">${[car.vin ? `VIN ${esc(car.vin)}` : '', car.websiteUrl ? `<a href="${esc(car.websiteUrl)}" target="_blank" rel="noopener">Open on the website</a>` : '', car.listingUrl ? `<a href="${esc(car.listingUrl)}" target="_blank" rel="noopener">Open on AutoTrader.ca</a>` : '', !car.websiteUrl && !car.listingUrl ? (car.importSource ? `listed on ${esc(car.importSource)}` : `bought at ${esc(car.source || '')}`) : ''].filter(Boolean).join(' · ')}</div>
             ${car.listingHeadline ? `<div class="sub" style="margin-top: 4px">${esc(car.listingHeadline)}</div>` : ''}</div>
-            ${car.daysFromListing ? `<span class="pill blue">${car.daysInStock} days listed</span>` : agePill(car.daysInStock)}
+            ${car.delisted ? '<span class="pill">No longer on the website</span>' : (car.daysFromListing ? `<span class="pill blue">${car.daysInStock} days listed</span>` : agePill(car.daysInStock))}
           </div>
           <div class="kv">
-            <div><div class="label">List price</div><div class="value" id="cur-price">${money(car.listPrice)}</div></div>
+            <div><div class="label">List price</div><div class="value" id="cur-price">${money(car.listPrice)}</div>${car.financePrice ? `<div class="label">${money(car.financePrice)} with financing</div>` : ''}</div>
             <div><div class="label">Total cost</div><div class="value">${car.totalCost ? money(car.totalCost) : '—'}</div>${car.totalCost ? '' : '<div class="label">not entered</div>'}</div>
             <div><div class="label">Margin at list</div><div class="value" id="cur-margin">${car.totalCost ? money(car.listPrice - car.totalCost) : '—'}</div></div>
           </div>

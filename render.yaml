@@ -17,6 +17,8 @@ services:
         value: Scarborough, ON
       - key: DEALER_POSTAL_CODE
         value: M1R 2Y5
+      - key: DEALER_WEBSITE
+        value: https://canadianfinemotors.ca
       - key: SEARCH_RADIUS_KM
         value: "100"
       - key: SEARCH_MAX_RESULTS

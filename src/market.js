@@ -3,6 +3,7 @@
 const store = require('./store');
 const pricing = require('./pricing');
 const apify = require('./adapters/apify');
+const website = require('./adapters/website');
 const sample = require('./adapters/sample');
 const ai = require('./ai');
 
@@ -87,9 +88,10 @@ async function check(car, opts) {
   const data = await fetchListings(car, o);
   if (!data) return null;
   const isOwn = ownMatcher();
+  const vin = String(car.vin || '').toUpperCase();
   // One record per car (the same car on two sites is read, matched and counted once).
   data.listings = pricing.groupListings(data.listings);
-  data.listings.forEach((l) => { l.isOwn = isOwn(l); });
+  data.listings.forEach((l) => { l.isOwn = isOwn(l) || (!!vin && String(l.vin || '').toUpperCase() === vin); });
   if (o.onProgress) o.onProgress(80, 'Reading the listings', 'reading');
   const en = await enrich(car, data);
   if (o.onProgress) o.onProgress(90, 'Matching and pricing', 'pricing');
@@ -141,4 +143,44 @@ async function importOwnListings(opts) {
   return { found: r.listings.length, mine: mine.length, added, updated, sellers, note, error: r.error || null };
 }
 
-module.exports = { check, fetchListings, hasCache, memoCached, liveAvailable, cacheKey, importOwnListings };
+// Mirror the dealer's own website into the inventory: every car on the lot, keyed by VIN.
+async function importFromWebsite(opts) {
+  const o = opts || {};
+  if (!website.available()) throw new Error('No dealer website configured (DEALER_WEBSITE)');
+  const cars = await website.fetchInventory(o.onProgress);
+  if (!cars.length) throw new Error('The website returned no vehicles; the page layout may have changed.');
+  if (o.onProgress) o.onProgress(88, `${cars.length} cars on the website; updating the inventory`, 'merging');
+  const existing = store.inventory.all();
+  const now = new Date().toISOString();
+  let added = 0, updated = 0, relisted = 0;
+  const seenIds = new Set();
+  cars.forEach((w) => {
+    const key = 'site:' + w.siteId;
+    let car = (w.vin && existing.find((c) => String(c.vin || '').toUpperCase() === w.vin)) || existing.find((c) => c.importKey === key || c.websiteId === w.siteId);
+    const fresh = { year: w.year, make: w.make, model: w.model, trim: w.trim, bodyStyle: w.bodyStyle || '', km: w.km, transmission: w.transmission || '',
+      listPrice: w.cashPrice, financePrice: w.financePrice || 0, image: w.image || null, websiteUrl: w.url, websiteId: w.siteId, listingHeadline: w.headline, vin: w.vin || null, stockNumber: w.stockNumber || '',
+      importedAt: now, importSource: 'canadianfinemotors.ca', delisted: false };
+    const feats = pricing.featuresFromText(`${w.trim} ${w.title} ${w.headline}`);
+    if (car) {
+      const before = car.listPrice;
+      if (car.delisted) relisted += 1;
+      // Keep what the website does not know: costs, offers, AutoTrader link and days, body style already entered.
+      Object.assign(car, fresh, { bodyStyle: w.bodyStyle || car.bodyStyle || '', features: Object.assign({}, feats, car.features || {}) });
+      if (before && before !== car.listPrice) car.priceHistory = (car.priceHistory || []).concat([{ at: now, from: before, to: car.listPrice, reason: 'Synced from the website' }]);
+      updated += 1;
+    } else {
+      car = Object.assign({ id: 'cf-' + Math.random().toString(36).slice(2, 8), purchasePrice: 0, auctionFees: 0, transport: 0, reconditioning: 0, purchasedAt: null, location: 'Main lot', source: 'Imported from the website', offers: [], features: feats, importKey: key }, fresh);
+      added += 1;
+    }
+    seenIds.add(car.id);
+    store.inventory.save(car);
+  });
+  // Cars that were on the website before and are not any more are most likely sold: keep them, flagged.
+  let delisted = 0;
+  store.inventory.all().forEach((c) => {
+    if (c.websiteId && !seenIds.has(c.id) && !c.delisted) { c.delisted = true; c.delistedAt = now; store.inventory.save(c); delisted += 1; }
+  });
+  return { found: cars.length, added, updated, relisted, delisted, source: website.BASE };
+}
+
+module.exports = { check, fetchListings, hasCache, memoCached, liveAvailable, cacheKey, importOwnListings, importFromWebsite, websiteAvailable: website.available, websiteBase: website.BASE };
