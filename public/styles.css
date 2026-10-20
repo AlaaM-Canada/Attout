@@ -5,6 +5,7 @@
   --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; --display: 'Archivo', 'Segoe UI', sans-serif; --mono: 'IBM Plex Mono', monospace;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.45; }
 a { color: var(--ink); }
 button, input, select, textarea { font-family: inherit; font-size: 15px; }
