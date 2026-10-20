@@ -64,7 +64,8 @@ const store = {
       all[key] = { at: new Date().toISOString(), value };
       writeJson('cache.json', all);
     },
-    keys() { return Object.keys(readJson('cache.json', {})); }
+    keys() { return Object.keys(readJson('cache.json', {})); },
+    snapshot() { return readJson('cache.json', {}); }
   }
 };
 

@@ -30,21 +30,27 @@ function withDerived(c) {
 }
 
 app.get('/api/config', (req, res) => {
-  res.json({ dealer: DEALER, liveAvailable: market.liveAvailable(), websiteAvailable: market.websiteAvailable(), website: market.websiteBase, aiAvailable: ai.available(), aiModel: ai.MODEL, features: pricing.FEATURES.map((f) => ({ key: f.key, label: f.label, value: f.value })), rates: pricing.RATES });
+  res.json({ dealer: DEALER, liveAvailable: market.liveAvailable(), websiteAvailable: market.websiteAvailable(), website: market.websiteBase, radiusKm: Number(process.env.SEARCH_RADIUS_KM || 100), aiAvailable: ai.available(), aiModel: ai.MODEL, features: pricing.FEATURES.map((f) => ({ key: f.key, label: f.label, value: f.value })), rates: pricing.RATES });
 });
 
-app.get('/api/inventory', (req, res) => res.json(store.inventory.all().map(withDerived)));
+app.get('/api/inventory', (req, res) => {
+  const cars = store.inventory.all().map(withDerived);
+  const market = market_summaries(cars);
+  res.json(cars.map((c) => Object.assign({}, c, { market: market[c.id] || null })));
+});
+function market_summaries(cars) { try { return market.summaries(cars); } catch (e) { return {}; } }
 
 app.get('/api/inventory/:id', (req, res) => {
   const c = store.inventory.get(req.params.id);
   if (!c) return res.status(404).json({ error: 'Car not found' });
-  res.json(withDerived(c));
+  const d = withDerived(c);
+  res.json(Object.assign(d, { market: market_summaries([d])[d.id] || null }));
 });
 
 app.put('/api/inventory/:id', (req, res) => {
   const c = store.inventory.get(req.params.id);
   if (!c) return res.status(404).json({ error: 'Car not found' });
-  const allowed = ['year', 'make', 'model', 'trim', 'bodyStyle', 'transmission', 'km', 'drivetrain', 'colour', 'listPrice', 'purchasePrice', 'auctionFees', 'transport', 'reconditioning', 'features', 'location', 'stockNumber', 'source', 'image'];
+  const allowed = ['year', 'make', 'model', 'trim', 'bodyStyle', 'transmission', 'km', 'drivetrain', 'colour', 'listPrice', 'purchasePrice', 'auctionFees', 'transport', 'reconditioning', 'features', 'location', 'stockNumber', 'source', 'image', 'vin', 'purchasedAt'];
   allowed.forEach((k) => { if (req.body[k] !== undefined) c[k] = req.body[k]; });
   store.inventory.save(c);
   store.audit.add({ action: 'Car updated', module: 'Inventory', target: `${c.year} ${c.make} ${c.model}` });

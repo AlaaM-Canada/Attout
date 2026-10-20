@@ -143,6 +143,27 @@ async function importOwnListings(opts) {
   return { found: r.listings.length, mine: mine.length, added, updated, sellers, note, error: r.error || null };
 }
 
+// Market status for many cars at once, from the cache only (no network, no AI): feeds the inventory page.
+function summaries(cars, mode) {
+  const all = store.cache.snapshot();
+  const isOwn = ownMatcher();
+  const out = {};
+  (cars || []).forEach((car) => {
+    const hit = all[cacheKey(car)];
+    if (!hit || !hit.value || Date.now() - new Date(hit.at).getTime() > 7 * 24 * 3600 * 1000) return;
+    const aiHit = all[cacheKey(car) + '|ai2|' + [car.trim, car.bodyStyle].join(' ').toLowerCase()];
+    const base = (aiHit && aiHit.value && aiHit.value.fetchedAt === hit.at && aiHit.value.listings) || hit.value.listings || [];
+    const vin = String(car.vin || '').toUpperCase();
+    const listings = pricing.groupListings(base);
+    listings.forEach((l) => { l.isOwn = isOwn(l) || (!!vin && String(l.vin || '').toUpperCase() === vin); });
+    try {
+      const a = pricing.analyze(car, listings, mode || 'close');
+      out[car.id] = { checkedAt: hit.at, source: hit.value.source || 'live', median: a.stats.median, pctVsMedian: a.stats.pctVsMedian, position: a.stats.position, verdict: a.recommendation.verdict, listAt: a.recommendation.listAt, used: a.stats.used, rank: a.stats.rank, listedFor: a.recommendation.listedFor };
+    } catch (e) { /* a car the engine cannot analyse simply has no status */ }
+  });
+  return out;
+}
+
 // Mirror the dealer's own website into the inventory: every car on the lot, keyed by VIN.
 async function importFromWebsite(opts) {
   const o = opts || {};
@@ -183,4 +204,4 @@ async function importFromWebsite(opts) {
   return { found: cars.length, added, updated, relisted, delisted, source: website.BASE };
 }
 
-module.exports = { check, fetchListings, hasCache, memoCached, liveAvailable, cacheKey, importOwnListings, importFromWebsite, websiteAvailable: website.available, websiteBase: website.BASE };
+module.exports = { check, fetchListings, hasCache, memoCached, liveAvailable, cacheKey, summaries, importOwnListings, importFromWebsite, websiteAvailable: website.available, websiteBase: website.BASE };
