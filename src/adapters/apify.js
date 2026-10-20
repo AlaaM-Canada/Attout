@@ -1,4 +1,5 @@
 'use strict';
+const { cleanUrl } = require('../links');
 // Listings source: Apify actor "fayoussef/canada-car-scraper" (AutoTrader.ca, Kijiji, CarGurus.ca).
 // This is the demo source. The product should move to a licensed data provider; only this file changes.
 
@@ -37,7 +38,7 @@ function normalize(items) {
       out.push({
         id: `${it.vehicle_id || i}-${source}`,
         source,
-        url: url || null,
+        url: cleanUrl(source, url),
         title: it.title || [it.year, it.make, it.model, it.trim].filter(Boolean).join(' '),
         year: Number(it.year) || null,
         make: it.make || '',

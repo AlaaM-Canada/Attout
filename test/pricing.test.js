@@ -145,3 +145,17 @@ test('the same car on several sites becomes one record with a button per site', 
   assert.strictEqual(pricing.groupListings(grouped).length, 2);
   assert.strictEqual(pricing.groupListings(grouped)[0].sites.length, 3);
 });
+
+test('CarGurus links open the car page, not the search page', () => {
+  const { cleanUrl } = require('../src/links');
+  assert.strictEqual(cleanUrl('CarGurus.ca', 'https://www.cargurus.ca/Cars/inventorylisting/viewDetailsFilterViewInventoryListing.action?inventoryListing=462025693'), 'https://www.cargurus.ca/details/462025693');
+  assert.strictEqual(cleanUrl('CarGurus.ca', 'https://www.cargurus.ca/Cars/inventorylisting/vdp.action?listingId=1#x'), 'https://www.cargurus.ca/details/1');
+  assert.strictEqual(cleanUrl('CarGurus.ca', 'https://www.cargurus.ca/details/5?searchUuid=abc'), 'https://www.cargurus.ca/details/5');
+  const at = 'https://www.autotrader.ca/offers/honda-accord-touring-cat_ma31-7e66225d';
+  assert.strictEqual(cleanUrl('AutoTrader.ca', at), at);
+  assert.strictEqual(cleanUrl('Kijiji', null), null);
+  // Cached results from before the fix are corrected when they are grouped.
+  const g = pricing.groupListings([{ id: 'v1-CarGurus.ca', source: 'CarGurus.ca', url: 'https://www.cargurus.ca/Cars/inventorylisting/viewDetailsFilterViewInventoryListing.action?inventoryListing=99', price: 1, year: 2018, make: 'Honda', model: 'Accord', km: 1000, seller: 'X' }]);
+  assert.strictEqual(g[0].url, 'https://www.cargurus.ca/details/99');
+  assert.strictEqual(g[0].sites[0].url, 'https://www.cargurus.ca/details/99');
+});

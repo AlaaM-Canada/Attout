@@ -1,4 +1,5 @@
 'use strict';
+const { cleanUrl } = require('./links');
 // Market matching and pricing engine. Pure functions, no I/O.
 // Rates are starting assumptions for the demo; tune them with the dealer.
 
@@ -145,7 +146,8 @@ function groupListings(listings) {
   const sameCar = (a, b) => a.seller && b.seller && norm(a.seller) === norm(b.seller) && a.year === b.year && norm(a.make) === norm(b.make) && norm(a.model) === norm(b.model)
     && a.km && b.km && Math.abs(a.km - b.km) <= Math.max(300, a.km * 0.01);
   listings.forEach((l) => {
-    const sites = (l.sites && l.sites.length ? l.sites : [{ source: l.source, url: l.url || null, price: l.price, daysOnMarket: l.daysOnMarket, dealRating: l.dealRating || '', priceDrop: !!l.priceDrop }]);
+    const sites = (l.sites && l.sites.length ? l.sites : [{ source: l.source, url: l.url || null, price: l.price, daysOnMarket: l.daysOnMarket, dealRating: l.dealRating || '', priceDrop: !!l.priceDrop }])
+      .map((st) => Object.assign({}, st, { url: cleanUrl(st.source, st.url) }));
     const keys = keysOf(l);
     let g = null;
     keys.forEach((k) => { if (!g && byKey[k]) g = byKey[k]; });
