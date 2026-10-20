@@ -46,6 +46,7 @@
   }
 
   // ---------- Inventory ----------
+  let importNote = '';
   async function renderInventory() {
     setNav('inventory');
     main.innerHTML = '<h1>Inventory</h1><div class="sub">Loading…</div>';
@@ -58,7 +59,7 @@
         <div class="stat"><div class="label">Capital tied up</div><div class="value">${money(capital)}</div></div>
         <button class="btn" id="btn-import" ${config.liveAvailable ? '' : 'disabled title="Live search is off"'}>Refresh from AutoTrader</button></div>
       </div>
-      <div id="import-status"></div>
+      <div id="import-status">${importNote ? `<div class="banner orange">${esc(importNote)}</div>` : ''}</div>
       ${cars.length ? '' : `<div class="empty">No cars yet. ${config.liveAvailable ? 'Click <strong>Refresh from AutoTrader</strong> to load the dealership\'s current listings.' : 'Live search is off, so nothing can be loaded here.'}</div>`}
       <div class="grid grid-3">${cars.map((c) => `
         <a class="card car-card" href="#/car/${esc(c.id)}">
@@ -79,6 +80,7 @@
         const start = await api('/inventory/import', { method: 'POST', body: '{}' });
         const r = await followJob(start.jobId, box, 'Refreshing from AutoTrader');
         toast(`${r.mine} of your listings found: ${r.added} added, ${r.updated} updated.`);
+        importNote = !r.mine && r.note ? r.note : '';
         renderInventory();
       } catch (e) { box.innerHTML = `<div class="banner orange">${esc(e.message)}</div>`; imp.disabled = false; }
     });

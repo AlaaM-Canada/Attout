@@ -91,7 +91,7 @@ app.post('/api/inventory/import', (req, res) => {
   const job = jobs.create('import', async (progress) => {
     progress(3, 'Contacting AutoTrader.ca', 'searching');
     const r = await market.importOwnListings({ source: 'autotrader', onProgress: progress });
-    store.audit.add({ action: 'Inventory refreshed from AutoTrader.ca', module: 'Inventory', target: `${r.mine} listings`, detail: `${r.added} added, ${r.updated} updated` });
+    store.audit.add({ action: 'Inventory refreshed from AutoTrader.ca', module: 'Inventory', target: `${r.mine} listings`, detail: `${r.added} added, ${r.updated} updated.${r.note ? ' ' + r.note : ''}` });
     return r;
   });
   res.status(202).json({ jobId: job.id });

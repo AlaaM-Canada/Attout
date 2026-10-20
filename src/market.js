@@ -131,7 +131,14 @@ async function importOwnListings(opts) {
     }
     store.inventory.save(car);
   });
-  return { found: r.listings.length, mine: mine.length, added, updated };
+  // Who the other listings belong to, so an empty import can be explained (and checked) instead of guessed at.
+  const sellers = {};
+  r.listings.forEach((l) => { const n = l.seller || (l.sellerType === 'private' ? 'Private seller' : 'Seller not named'); sellers[n] = (sellers[n] || 0) + 1; });
+  const radius = input.radius_km;
+  const note = mine.length ? '' : (r.listings.length
+    ? `${r.listings.length} listings came back within ${radius} km of ${input.postal_code}, none from ${DEALER.name}. Sellers: ${Object.keys(sellers).map((k) => `${k} (${sellers[k]})`).join(', ')}.`
+    : `No listings came back within ${radius} km of ${input.postal_code}.`);
+  return { found: r.listings.length, mine: mine.length, added, updated, sellers, note, error: r.error || null };
 }
 
 module.exports = { check, fetchListings, hasCache, memoCached, liveAvailable, cacheKey, importOwnListings };
